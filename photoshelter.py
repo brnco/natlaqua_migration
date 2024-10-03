@@ -1,11 +1,9 @@
 '''
-migrates still image data from photoshelter
+Photoshelter API integration for National Aquarium
 '''
-import os
 import json
-import pathlib
 import requests
-import http.client
+import pathlib
 
 
 def get_credentials():
