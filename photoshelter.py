@@ -8,10 +8,10 @@ import pathlib
 
 def get_credentials():
     '''
-    reads api key from config file
+    reads credential info from config file
     '''
     this_dirpath = pathlib.Path(__file__).parent.absolute()
-    with open(this_dirpath / 'api_keys.json', 'r') as config_file:
+    with open(this_dirpath / 'credentials.json', 'r') as config_file:
         credentials = json.load(config_file)
     return credentials
 
