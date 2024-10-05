@@ -17,6 +17,33 @@ def get_credentials():
     return credentials
 
 
+def search(token, cred):
+    '''
+    searches
+    '''
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['api_key'],
+               "X-PS-Auth-Token": token}
+    params = {"media_type": "image", "user_id": "U00000IaRrKjMObI"}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/search",
+                            headers=headers, params=params)
+    pprint(response.request.__dict__)
+    pprint(response.json())
+
+
+def get_library(token, cred):
+    '''
+    gets library? idk we'll fill this later
+    '''
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['api_key'],
+               "X-PS-Auth-Token": token}
+    params = {}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/library", headers=headers, params=params)
+    pprint(response.request.__dict__)
+    pprint(response.json())
+
+
 def get_media_md(media_id, token):
     '''
     gets metadata for a single media object
@@ -50,10 +77,13 @@ def main():
     '''
     do the thing
     '''
+    cred = get_credentials()
     #authenticate()
-    token = "ie6jWgGDDbz5uRkrRXMt"
+    token = "SJjOJjIaza7npL2Ofk.G"
     media_id = "I0000xmxpmIut5PM"
-    get_media_md(media_id, token)
+    #get_media_md(media_id, token)
+    #get_library(token, cred)
+    search(token, cred)
 
 if __name__ == "__main__":
     main()
