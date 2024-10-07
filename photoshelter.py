@@ -2,6 +2,7 @@
 Photoshelter API integration for National Aquarium
 '''
 import json
+import argparse
 import requests
 import pathlib
 from pprint import pprint
@@ -24,11 +25,13 @@ def search(token, cred):
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['api_key'],
                "X-PS-Auth-Token": token}
-    params = {"media_type": "image", "user_id": "U00000IaRrKjMObI"}
+    params = {"media_type": "image", "org_id": "O0000e.jllXxQUoI"}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/search",
                             headers=headers, params=params)
     pprint(response.request.__dict__)
-    pprint(response.json())
+    for item in response.json()['data']:
+        print(item)
+        input("hey")
 
 
 def get_library(token, cred):
@@ -38,7 +41,7 @@ def get_library(token, cred):
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['api_key'],
                "X-PS-Auth-Token": token}
-    params = {}
+    params = {"is_listed": "true"}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/library", headers=headers, params=params)
     pprint(response.request.__dict__)
     pprint(response.json())
@@ -73,17 +76,49 @@ def authenticate():
     print("click on that ^ url and copy the token it gives you")
 
 
+def init():
+    '''
+    get some command line args and parse em
+    '''
+    parser = argparse.ArgumentParser(
+            formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--mode", dest="mode",
+                        choices=['download',
+                                 'authenticate',
+                                 'get_media_metadata',
+                                 'get_library',
+                                 'search'],
+                        help="the mode of the script")
+    parser.add_argument("--token", dest="token", default=None,
+                        help="the token for this session, "\
+                                "generated via authenticate mode")
+    parser.add_argument("--media_id", dest="media_id", default=None,
+                        help="the media ID (for testing)")
+    args = parser.parse_args()
+    return args
+
+
 def main():
     '''
     do the thing
     '''
+    args = init()
     cred = get_credentials()
-    #authenticate()
-    token = "SJjOJjIaza7npL2Ofk.G"
-    media_id = "I0000xmxpmIut5PM"
-    #get_media_md(media_id, token)
-    #get_library(token, cred)
-    search(token, cred)
+    if args.mode == 'authenticate':
+        authenticate()
+    else:
+        if not args.token:
+            raise RuntimeError("you gotta get the token "\
+                    "via authenticate mode")
+        token = args.token
+        if args.mode == "get_media_metadata":
+            media_id = args.media_id
+            get_media_md(media_id, token)
+        elif args.mode == "get_library":
+            get_library(token, cred)
+        elif args.mode == "search":
+            search(token, cred)
+
 
 if __name__ == "__main__":
     main()
