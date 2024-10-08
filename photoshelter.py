@@ -25,20 +25,48 @@ def upload_item_to_atbl(item):
 
 
 
-def search(token, cred):
+def search(token, cred, page=1, per_page=10):
     '''
     searches
     '''
     headers = {"content-type": "application/x-www-form-urlencoded",
-               "X-PS-Api-Key": cred['api_key'],
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
-    params = {"media_type": "image", "org_id": "O0000e.jllXxQUoI"}
+    params = {"media_type": "image", "org_id": "O0000e.jllXxQUoI",
+              "per_page": per_page, "page": page}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/search",
                             headers=headers, params=params)
+    return response
+
+
+def iterate_response(response):
+    '''
+    moves through response by page, by item
+    '''
     pprint(response.request.__dict__)
+    '''
+    print(len(response.json()['data']))
+    print(response.json()['meta'])
+    input("press any key to display results")
+    '''
     for item in response.json()['data']:
         print(item)
         input("hey")
+    return
+
+
+def manage_search(token, cred):
+    '''
+    manages the search and parsing of results
+    '''
+    total_results = 20
+    per_page = 5
+    total_pages = total_results / per_page
+    page = 1
+    while page <= total_pages:
+        response = search(token, cred, page, per_page)
+        iterate_response(response)
+        page += 1
 
 
 def get_library(token, cred):
@@ -46,7 +74,7 @@ def get_library(token, cred):
     gets library? idk we'll fill this later
     '''
     headers = {"content-type": "application/x-www-form-urlencoded",
-               "X-PS-Api-Key": cred['api_key'],
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
     params = {"is_listed": "true"}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/library", headers=headers, params=params)
@@ -59,9 +87,9 @@ def get_media_md(media_id, token):
     gets metadata for a single media object
     '''
     cred = get_credentials()
-    params = {"api_key": cred['api_key']}
+    params = {"api_key": cred['photoshelter']['api_key']}
     headers = {"content-type": "application/x-www-form-urlencoded",
-               "X-PS-Api-Key": cred['api_key']}
+               "X-PS-Api-Key": cred['photoshelter']['api_key']}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/metadata", headers=headers)
     pprint(response.request.__dict__)
     pprint(response.__dict__)
@@ -72,9 +100,9 @@ def authenticate():
     do the thing
     '''
     cred = get_credentials()
-    params = {"api_key": cred['api_key'],
-              "password": cred['password'],
-              "email": cred['email'],
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "password": cred['photoshelter']['password'],
+              "email": cred['photoshelter']['email'],
               "mode": "token"}
     headers = {"content-type": "application/x-www-form-urlencoded"}
     base_url = "https://www.photoshelter.com/psapi/v4.0/authenticate"
@@ -124,7 +152,7 @@ def main():
         elif args.mode == "get_library":
             get_library(token, cred)
         elif args.mode == "search":
-            search(token, cred)
+            manage_search(token, cred)
 
 
 if __name__ == "__main__":
