@@ -54,6 +54,21 @@ class NatlAquaAirtableRecord(object):
             self_primary_field_value = self.primary_field
         return primary_field_name, self_primary_field_value
 
+    def _search_on_primary_field(self, primary_field_name, self_primary_field_value):
+        '''
+        searches for self_primary_field_value in primary_field_name
+        '''
+        atbl_tbl = self.get_table()
+        response = atbl_tbl.all(formula=match({
+            primary_field_name: self_primary_field_value}))
+        if len(response) > 1:
+            raise ValueError(f"too many results for {self_primary_field_value}")
+        elif len(response) > 0:
+            atbl_rec_remote = self.from_id(response[0]['id'])
+        else:
+            return None
+        return atbl_rec_remote
+
     def _fill_remote_rec_from_local(self, atbl_rec_remote):
         '''
         we can't just assign a record id to an unsaved record
