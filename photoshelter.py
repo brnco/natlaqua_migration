@@ -18,6 +18,13 @@ def get_credentials():
     return credentials
 
 
+def upload_item_to_atbl(item):
+    '''
+    uploads the item data from search response -> Airtable
+    '''
+
+
+
 def search(token, cred):
     '''
     searches
