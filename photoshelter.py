@@ -52,9 +52,9 @@ def iterate_response(response):
     '''
     for item in response.json()['data']:
         print(item)
-        atbl_rec = airtable.StillImageRecord().from_json(item)
-        atbl_rec.send()
-        print(atbl_rec.__dict__)
+        #atbl_rec = airtable.StillImageRecord().from_json(item)
+        #atbl_rec.send()
+        #print(atbl_rec.__dict__)
         input("hey")
     return
 
@@ -99,6 +99,18 @@ def get_media_md(media_id, token):
     pprint(response.__dict__)
 
 
+def iterate_airtable(token, cred):
+    '''
+    iterates through airtable list
+    '''
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'], "PhotoShelter Data", atbl_conf['api_key'])
+    for atbl_rec_remote in atbl_tbl.all():
+        atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
+        print(atbl_rec_local.__dict__)
+        input("yo")
+
+
 def authenticate():
     '''
     do the thing
@@ -126,7 +138,8 @@ def init():
                                  'authenticate',
                                  'get_media_metadata',
                                  'get_library',
-                                 'search'],
+                                 'search',
+                                 'iterate_airtable'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -157,6 +170,8 @@ def main():
             get_library(token, cred)
         elif args.mode == "search":
             manage_search(token, cred)
+        elif args.mode == "iterate_airtable":
+            iterate_airtable(token, cred)
 
 
 if __name__ == "__main__":
