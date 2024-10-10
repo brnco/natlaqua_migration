@@ -1,0 +1,12 @@
+{
+    "StillImageRecord": {
+        "media_id": {
+            "serv": ["id"],
+            "atbl": "media_id"
+        },
+        "file_name": {
+            "serv": ["attributes", "file_name"],
+            "atbl": "file_name"
+        }
+    }
+}

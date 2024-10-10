@@ -6,6 +6,7 @@ import argparse
 import requests
 import pathlib
 from pprint import pprint
+import airtable
 
 
 def get_credentials():
@@ -51,6 +52,9 @@ def iterate_response(response):
     '''
     for item in response.json()['data']:
         print(item)
+        atbl_rec = airtable.StillImageRecord().from_json(item)
+        atbl_rec.send()
+        print(atbl_rec.__dict__)
         input("hey")
     return
 

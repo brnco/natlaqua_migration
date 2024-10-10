@@ -5,8 +5,10 @@ import time
 import json
 import datetime
 import requests
+import pathlib
 from pyairtable import Api, Table
 from pyairtable import metadata as atbl_mtd
+from pyairtable.orm import Model, fields
 from pyairtable.formulas import match
 
 
@@ -15,9 +17,9 @@ def config():
     create a config object for Airtable setup
     '''
     this_dirpath = pathlib.Path(__file__).parent.absolute()
-    with open(this_dirpath / 'airtable_config.json', 'r') as config_file:
-        atbl_config = json.load(config_file)
-    return atbl_config
+    with open(this_dirpath / 'credentials.json', 'r') as config_file:
+        config = json.load(config_file)
+    return config['airtable']
 
 
 def get_api_key():
@@ -25,10 +27,21 @@ def get_api_key():
     returns personal token from config file
     '''
     atbl_config = config()
-    return atbl_config['airtable']['api_key']
+    return atbl_config['api_key']
 
 
-class NatlAquaAirtableRecord(object):
+def get_field_map(obj_type):
+    '''
+    returns dictionary of field mappings attrs
+    for specified obj type
+    '''
+    this_dirpath = pathlib.Path(__file__).parent.absolute()
+    with open(this_dirpath / "field_mappings.json", "r") as fm:
+        field_map = json.load(fm)
+    return field_map[obj_type]
+
+
+class NatlAquaAirtableRecord:
     '''
     super class for the various AirtableRecord() classes
     that we'll create later
@@ -36,13 +49,60 @@ class NatlAquaAirtableRecord(object):
     '''
     primary_field = None
 
+    @classmethod
+    def from_json(cls, json_rec, field_map):
+        '''
+        creates an Airtable record from JSON response from
+        the service (PhotoShelter or Aviary)
+        '''
+        instance = cls()
+        for attr_name, key_list in field_map.items():
+            print(attr_name)
+            value = json_rec
+            for key in key_list:
+                try:
+                    assert value[key]
+                except KeyError:
+                    value = None
+                    break
+                except TypeError:
+                    pass
+                if isinstance(value, list):
+                    for item in reversed(value):
+                        try:
+                            value = item[key]
+                            break
+                        except Exception:
+                            pass
+                else:
+                    value = value[key]
+                if isinstance(value, list):
+                    value = None
+                if not value:
+                    continue
+                try:
+                    setattr(instance, attr_name, value)
+                except ValueError as exc:
+                    print(exc)
+                    continue
+                except TypeError as exc:
+                    print("there was a problem")
+                    print(attr_name)
+                    print(value)
+                    print(exc)
+        return instance
+
     def _get_primary_key_info(self):
         '''
         for send()
         gets primary key name and value
         '''
+        primary_field_name = "media_id"
+        self_primary_field_value = self._fields[primary_field_name]
+        '''
         atbl_tbl = self.get_table()
-        atbl_tbl_schema = atbl_mtd.get_table_schema(atbl_tbl)
+        #atbl_tbl_schema = atbl_mtd.get_table_schema(atbl_tbl)
+        atbl_tbl_schema = atbl_tbl.schema()
         primary_field_id = atbl_tbl_schema['primaryFieldId']
         for field in atbl_tbl_schema['fields']:
             if field['id'] == primary_field_id:
@@ -52,6 +112,7 @@ class NatlAquaAirtableRecord(object):
             self_primary_field_value = self._fields[primary_fields_name]
         except KeyError:
             self_primary_field_value = self.primary_field
+        '''
         return primary_field_name, self_primary_field_value
 
     def _search_on_primary_field(self, primary_field_name, self_primary_field_value):
@@ -96,9 +157,9 @@ class NatlAquaAirtableRecord(object):
                 return atbl_rec
             else:
                 raise RuntimeError("there was a problem saving that record")
-            except requests.exceptions.HTTPError as exc:
-                pprint(exc)
-                raise RuntimeError("there was a network problem while saving that record")
+        except requests.exceptions.HTTPError as exc:
+            pprint(exc)
+            raise RuntimeError("there was a network problem while saving that record")
 
 
     def send(self):
@@ -120,6 +181,34 @@ class NatlAquaAirtableRecord(object):
             atbl_rec_remote = self
         atbl_rec_remote = self._save_rec(atbl_rec_remote)
         return atbl_rec_remote
+
+
+class StillImageRecord(Model, NatlAquaAirtableRecord):
+    '''
+    object class for Still Images at National Aquarium
+    '''
+    field_map = get_field_map("StillImageRecord")
+    serv_atbl_map = {}
+    for field, mapping in field_map.items():
+        vars()[field] = fields.TextField(mapping['atbl'])
+        serv_atbl_map[field] = mapping['serv']
+
+    class Meta:
+        base_id = "appgYr7zoiRmDT0ye"
+        table_name = "PhotoShelter Data"
+        typecast = False
+
+        @staticmethod
+        def api_key():
+            return get_api_key()       
+
+    def from_json(self, record):
+        '''
+        creates an Airtable record from JSON response
+        uses serv -> atbl map
+        '''
+        return super().from_json(record, self.serv_atbl_map)
+
 
 def connect_one_table(base_id, table_name, api_key):
     '''
@@ -150,7 +239,7 @@ def find(atbl_tbl, query, field, single_result=False):
         if results:
             if single_result and len(results) > 1:
                 raise ValueError
-            if single_result and len(results) = 1:
+            if single_result and len(results) == 1:
                 return results[0]
             return results
         print("no results found")
