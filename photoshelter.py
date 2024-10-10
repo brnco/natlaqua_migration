@@ -86,17 +86,17 @@ def get_library(token, cred):
     pprint(response.json())
 
 
-def get_media_md(media_id, token):
+def get_media_md(media_id, token, cred):
     '''
     gets metadata for a single media object
     '''
     cred = get_credentials()
-    params = {"api_key": cred['photoshelter']['api_key']}
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "include": "iptc"}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key']}
-    response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/metadata", headers=headers)
-    pprint(response.request.__dict__)
-    pprint(response.__dict__)
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id, headers=headers)
+    return response
 
 
 def iterate_airtable(token, cred):
@@ -107,7 +107,9 @@ def iterate_airtable(token, cred):
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'], "PhotoShelter Data", atbl_conf['api_key'])
     for atbl_rec_remote in atbl_tbl.all():
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
-        print(atbl_rec_local.__dict__)
+        response = get_media_md(atbl_rec_local.media_id, token, cred)
+        pprint(response.json())
+        #print(atbl_rec_local.__dict__)
         input("yo")
 
 
