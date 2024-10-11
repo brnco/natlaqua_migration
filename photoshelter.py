@@ -86,11 +86,24 @@ def get_library(token, cred):
     pprint(response.json())
 
 
+def download_media(media_id, token, cred):
+    '''
+    downloads media
+    '''
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "password": cred['photoshelter']['password'],
+              "token": token,
+              "download_filetype": "original"}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key']}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download", headers=headers, params=params)
+    return response
+
+
 def get_media_md(media_id, token, cred):
     '''
     gets metadata for a single media object
     '''
-    cred = get_credentials()
     params = {"api_key": cred['photoshelter']['api_key'],
               "include": "iptc"}
     headers = {"content-type": "application/x-www-form-urlencoded",
@@ -107,7 +120,9 @@ def iterate_airtable(token, cred):
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'], "PhotoShelter Data", atbl_conf['api_key'])
     for atbl_rec_remote in atbl_tbl.all():
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
-        response = get_media_md(atbl_rec_local.media_id, token, cred)
+        #response = get_media_md(atbl_rec_local.media_id, token, cred)
+        response = download_media(atbl_rec_local.media_id, token, cred)
+        pprint(response.request.__dict__)
         pprint(response.json())
         #print(atbl_rec_local.__dict__)
         input("yo")
