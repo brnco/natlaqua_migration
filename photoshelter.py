@@ -34,7 +34,8 @@ def search(token, cred, page=1, per_page=10):
                "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
     params = {"media_type": "image", "org_id": "O0000e.jllXxQUoI",
-              "per_page": per_page, "page": page}
+              "per_page": per_page, "page": page,
+              "sort_by": "creation_time", "sort_direction": "descending"}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/search",
                             headers=headers, params=params)
     return response
@@ -51,11 +52,11 @@ def iterate_response(response):
     input("press any key to display results")
     '''
     for item in response.json()['data']:
-        print(item)
-        #atbl_rec = airtable.StillImageRecord().from_json(item)
-        #atbl_rec.send()
+        #print(item)
+        atbl_rec = airtable.StillImageRecord().from_json(item)
+        atbl_rec.send()
         #print(atbl_rec.__dict__)
-        input("hey")
+        #input("hey")
     return
 
 
@@ -63,8 +64,8 @@ def manage_search(token, cred):
     '''
     manages the search and parsing of results
     '''
-    total_results = 20
-    per_page = 5
+    total_results = 100
+    per_page = 50
     total_pages = total_results / per_page
     page = 1
     while page <= total_pages:
