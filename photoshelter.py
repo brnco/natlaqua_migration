@@ -19,13 +19,6 @@ def get_credentials():
     return credentials
 
 
-def upload_item_to_atbl(item):
-    '''
-    uploads the item data from search response -> Airtable
-    '''
-
-
-
 def search(token, cred, page=1, per_page=10):
     '''
     searches
@@ -98,6 +91,7 @@ def download_media(media_id, token, cred):
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key']}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download", headers=headers, params=params)
+    print(response.status_code)
     return response
 
 
@@ -190,6 +184,8 @@ def main():
             manage_search(token, cred)
         elif args.mode == "iterate_airtable":
             iterate_airtable(token, cred)
+        elif args.mode == "download":
+            download_media("I0000IcZL.qvRYv8", token, cred)
 
 
 if __name__ == "__main__":
