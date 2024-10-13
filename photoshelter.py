@@ -80,6 +80,17 @@ def get_library(token, cred):
     pprint(response.json())
 
 
+def save_file(url, headers, params):
+    '''
+    actually saves the file to disk
+    '''
+    filename = url.split("/")[-1]
+    with requests.get(url, stream=True, headers=headers, params=params) as res:
+        with open(filename, "wb") as file:
+            shutil.copyfileobj(res.raw, file)
+    return filename
+
+
 def download_media(media_id, token, cred):
     '''
     downloads media
@@ -90,7 +101,9 @@ def download_media(media_id, token, cred):
               "download_filetype": "original"}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key']}
-    response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download", headers=headers, params=params)
+    #response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download", headers=headers, params=params)
+    url = "https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download"
+    filename = save_file(url, headers, params)
     print(response.status_code)
     return response
 
