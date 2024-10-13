@@ -2,6 +2,7 @@
 Photoshelter API integration for National Aquarium
 '''
 import json
+import time
 import shutil
 import argparse
 import requests
@@ -81,19 +82,22 @@ def get_library(token, cred):
     pprint(response.json())
 
 
-def save_file(url, headers, params, filename=False):
+def save_file(url, headers, params, filename=None):
     '''
     actually saves the file to disk
     '''
     if not filename:
-        filename = url.split("/")[-2]
+        filepath = url.split("/")[-2]
+    else:
+        filepath = pathlib.Path("/run/media/bec/LaCie") / filename
     with requests.get(url, stream=True, headers=headers, params=params) as res:
-        with open(filename, "wb") as file:
+        with open(filepath, "wb") as file:
             shutil.copyfileobj(res.raw, file)
-    return filename
+    print(res.status_code)
+    return filepath
 
 
-def download_media(media_id, token, cred):
+def download_media(media_id, token, cred, filename=None):
     '''
     downloads media
     '''
@@ -105,9 +109,8 @@ def download_media(media_id, token, cred):
                "X-PS-Api-Key": cred['photoshelter']['api_key']}
     #response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download", headers=headers, params=params)
     url = "https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download"
-    filename = save_file(url, headers, params)
-    print(filename)
-    return filename
+    filepath = save_file(url, headers, params, filename=filename)
+    return filepath
 
 
 def get_media_md(media_id, token, cred):
@@ -131,9 +134,11 @@ def iterate_airtable(token, cred):
     for atbl_rec_remote in atbl_tbl.all():
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         #response = get_media_md(atbl_rec_local.media_id, token, cred)
-        response = download_media(atbl_rec_local.media_id, token, cred)
-        pprint(response.request.__dict__)
-        pprint(response.json())
+        filename = atbl_rec_local.file_name
+        download_media(atbl_rec_local.media_id, token, cred, filename=filename)
+        atbl_rec_local.downloaded = "true"
+        atbl_rec_local.save()
+        time.sleep(0.1)
         #print(atbl_rec_local.__dict__)
         input("yo")
 
@@ -201,6 +206,7 @@ def main():
             iterate_airtable(token, cred)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
+
 
 
 if __name__ == "__main__":

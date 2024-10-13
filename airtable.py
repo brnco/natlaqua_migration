@@ -191,7 +191,10 @@ class StillImageRecord(Model, NatlAquaAirtableRecord):
     serv_atbl_map = {}
     for field, mapping in field_map.items():
         vars()[field] = fields.TextField(mapping['atbl'])
-        serv_atbl_map[field] = mapping['serv']
+        try:
+            serv_atbl_map[field] = mapping['serv']
+        except KeyError:
+            continue
 
     class Meta:
         base_id = "appgYr7zoiRmDT0ye"

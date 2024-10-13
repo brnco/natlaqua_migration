@@ -7,6 +7,9 @@
         "file_name": {
             "serv": ["attributes", "file_name"],
             "atbl": "file_name"
+        },
+        "downloaded": {
+            "atbl": "DL"
         }
     }
 }
