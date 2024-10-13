@@ -140,7 +140,7 @@ def iterate_airtable(token, cred):
         atbl_rec_local.save()
         time.sleep(0.1)
         #print(atbl_rec_local.__dict__)
-        input("yo")
+        #input("yo")
 
 
 def authenticate():
