@@ -2,6 +2,7 @@
 Photoshelter API integration for National Aquarium
 '''
 import json
+import shutil
 import argparse
 import requests
 import pathlib
@@ -80,11 +81,12 @@ def get_library(token, cred):
     pprint(response.json())
 
 
-def save_file(url, headers, params):
+def save_file(url, headers, params, filename=False):
     '''
     actually saves the file to disk
     '''
-    filename = url.split("/")[-1]
+    if not filename:
+        filename = url.split("/")[-2]
     with requests.get(url, stream=True, headers=headers, params=params) as res:
         with open(filename, "wb") as file:
             shutil.copyfileobj(res.raw, file)
@@ -104,8 +106,8 @@ def download_media(media_id, token, cred):
     #response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download", headers=headers, params=params)
     url = "https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download"
     filename = save_file(url, headers, params)
-    print(response.status_code)
-    return response
+    print(filename)
+    return filename
 
 
 def get_media_md(media_id, token, cred):
