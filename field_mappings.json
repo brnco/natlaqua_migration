@@ -8,6 +8,14 @@
             "serv": ["attributes", "file_name"],
             "atbl": "file_name"
         },
+        "permit_number": {
+            "serv": ["attributes", "custom_metadata", 0, "value"],
+            "atbl": "Permit Number"
+        },
+        "galleries": {
+            "serv": ["includes", "gallery", "data", "attributes", "name"],
+            "atbl": "Galleries"
+        },
         "downloaded": {
             "atbl": "DL"
         }

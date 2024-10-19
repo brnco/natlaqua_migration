@@ -6,6 +6,7 @@ import json
 import datetime
 import requests
 import pathlib
+from pprint import pprint
 from pyairtable import Api, Table
 from pyairtable import metadata as atbl_mtd
 from pyairtable.orm import Model, fields
@@ -56,28 +57,48 @@ class NatlAquaAirtableRecord:
         the service (PhotoShelter or Aviary)
         '''
         instance = cls()
+        #print(f"json_rec: {json_rec}")
         for attr_name, key_list in field_map.items():
-            print(attr_name)
             value = json_rec
+            #print(f"key_list: {key_list}")
             for key in key_list:
+                print(f"key: {key}")
+                print(f"value: {value}")
                 try:
                     assert value[key]
-                except KeyError:
+                except (KeyError, AssertionError):
+                    #print("key/ assert error, setting value to none")
                     value = None
                     break
                 except TypeError:
+                    #print("type error")
+                    #print(f"value: {value}")
                     pass
                 if isinstance(value, list):
-                    for item in reversed(value):
-                        try:
-                            value = item[key]
-                            break
-                        except Exception:
-                            pass
+                    #print("in isinstance list")
+                    if attr_name == "galleries":
+                        all_galleries = []
+                        for item in value:
+                            try:
+                                gallery = item['includes']['gallery']['data']['attributes']['name']
+                                all_galleries.append(gallery)
+                            except:
+                                pass
+                        value = ', '.join(all_galleries)
+                    else:
+                        for item in reversed(value):
+                            try:
+                                value = item[key]
+                                break
+                            except Exception:
+                                pass
                 else:
+                    #print(f"setting value to {value[key]}")
                     value = value[key]
+                '''
                 if isinstance(value, list):
                     value = None
+                '''
                 if not value:
                     continue
                 try:
@@ -86,10 +107,8 @@ class NatlAquaAirtableRecord:
                     print(exc)
                     continue
                 except TypeError as exc:
-                    print("there was a problem")
-                    print(attr_name)
-                    print(value)
-                    print(exc)
+                    #means we're not at the end of key_list, hopefully
+                    pass
         return instance
 
     def _get_primary_key_info(self):

@@ -46,12 +46,17 @@ def iterate_response(response):
     print(response.json()['meta'])
     input("press any key to display results")
     '''
-    for item in response.json()['data']:
-        #print(item)
-        atbl_rec = airtable.StillImageRecord().from_json(item)
-        atbl_rec.send()
-        #print(atbl_rec.__dict__)
-        #input("hey")
+    try:
+        for item in response.json()['data']:
+            #print(item)
+            atbl_rec = airtable.StillImageRecord().from_json(item)
+            atbl_rec.send()
+            break
+            #print(atbl_rec.__dict__)
+            #input("hey")
+    except Exception as exc:
+        print(exc)
+        print(response.__dict__)
     return
 
 
@@ -59,14 +64,14 @@ def manage_search(token, cred):
     '''
     manages the search and parsing of results
     '''
-    total_results = 100
-    per_page = 50
+    total_results = 100000
+    per_page = 100
     total_pages = total_results / per_page
-    page = 1
+    page = 501
     while page <= total_pages:
         response = search(token, cred, page, per_page)
         iterate_response(response)
-        page += 1
+        page += 10
 
 
 def get_library(token, cred):
@@ -89,11 +94,18 @@ def save_file(url, headers, params, filename=None):
     if not filename:
         filepath = url.split("/")[-2]
     else:
+        print(f"actually saving the file: {filename}")
         filepath = pathlib.Path("/run/media/bec/LaCie") / filename
+    if filepath.exists():
+        print("already exists...")
+        return filepath
     with requests.get(url, stream=True, headers=headers, params=params) as res:
         with open(filepath, "wb") as file:
             shutil.copyfileobj(res.raw, file)
-    print(res.status_code)
+    if res.status_code != 200:
+        print("did not download, probably")
+        print(res.status_code)
+        filepath.unlink()
     return filepath
 
 
@@ -101,6 +113,7 @@ def download_media(media_id, token, cred, filename=None):
     '''
     downloads media
     '''
+    print("preparing download...")
     params = {"api_key": cred['photoshelter']['api_key'],
               "password": cred['photoshelter']['password'],
               "token": token,
@@ -110,33 +123,113 @@ def download_media(media_id, token, cred, filename=None):
     #response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download", headers=headers, params=params)
     url = "https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download"
     filepath = save_file(url, headers, params, filename=filename)
-    return filepath
+    if filepath.exists():
+        return filepath
+    else:
+        return False
+
+
+def get_media_galleries(media_id, token, cred):
+    '''
+    gets the list of galleries for given media_id
+    '''
+    print("getting galleries for media...")
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "password": cred['photoshelter']['password'],
+              "Auth-Token": token,
+              "mode": "invited",
+              "include": "gallery"}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "Cookie": "SSphotoshelter_com_mem=EReh2JutceibFJ4O1MCf; acs=qYvUUr.DgUMRsRiv9ZGXTqcvRSC5nU40u6iI4gA3tD0kPTg3gblPpWUWZMoI2J04R._WMvnkFxT5ylf.cD80V6UlM8jNU2t9iLavVUG8bMjv5hrNa88oNetXV0E6fxXOIM6piQRuZ_9CsGxg6RLtFIYpoX86DBc9iHv3RpWb4JW4SZiluA7w9FC1DMevxDSBj.cHm7XWo7laY0qgpoQwu8Ynp776G5cFGAVFNe3Zp.NhNTgazErxjUzHEIsUYro36PcJHPjRZfUbkQeo6362GrOzfUsbxEYJ5zW6jvGWgtqAnSpuA2uNejyg"}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/galleries",
+                            headers=headers, params=params)
+    print(response.__dict__)
+    return response
 
 
 def get_media_md(media_id, token, cred):
     '''
     gets metadata for a single media object
     '''
+    print("getting metadata for media...")
     params = {"api_key": cred['photoshelter']['api_key'],
-              "include": "iptc"}
+              "includes": "iptc"}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key']}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id, headers=headers)
     return response
 
 
-def iterate_airtable(token, cred):
+def parse_response_for_custom_fields(response):
+    '''
+    parses the response from get_available_metadata_fields
+    prints just the custom fields
+    == category: metadata
+    '''
+    for field in response.json()['data']:
+        if field['category'] == 'metadata':
+            pprint(field)
+
+
+def get_media_metadata_custom(media_id, token, cred):
+    '''
+    gets every available metadata field from PhotoShelter
+    '''
+    print("getting custom metadata...")
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "password": cred['photoshelter']['password'],
+              "token": token}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key']}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/custom-metadata",
+                            params=params, headers=headers)
+    return response
+    
+
+
+def iterate_airtable(token, cred, download=False):
     '''
     iterates through airtable list
     '''
+    print("iterating through Airtable list")
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'], "PhotoShelter Data", atbl_conf['api_key'])
     for atbl_rec_remote in atbl_tbl.all():
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
-        #response = get_media_md(atbl_rec_local.media_id, token, cred)
+        print(f"working on: {atbl_rec_local.media_id}")
         filename = atbl_rec_local.file_name
-        download_media(atbl_rec_local.media_id, token, cred, filename=filename)
-        atbl_rec_local.downloaded = "true"
+        '''
+        response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
+        atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
+        try:
+            atbl_rec_local.permit_number = atbl_rec_with_custom_md.permit_number
+        except Exception:
+            continue
+        '''
+        response = get_media_galleries(atbl_rec_local.media_id, token, cred)
+        if not response.json()['data']:
+            continue
+        atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
+        try:
+            atbl_rec_local.galleries = atbl_rec_with_galleries.galleries
+        except Exception:
+            print("no galleries for that image")
+            continue
+        '''
+        response = get_media_md(atbl_rec_local.media_id, token, cred)
+        atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
+        try:
+            atbl_rec_local.license_expiration = atbl_rec_with_custom_md.license_expiration
+        except Exception:
+            continue
+        '''
+        if download:
+            worked_yn = download_media(atbl_rec_local.media_id, token, cred, filename=filename)
+            if worked_yn:
+                atbl_rec_local.downloaded = "true"
+            else:
+                atbl_rec_local.downloaded = "false"
         atbl_rec_local.save()
         time.sleep(0.1)
         #print(atbl_rec_local.__dict__)
@@ -151,7 +244,8 @@ def authenticate():
     params = {"api_key": cred['photoshelter']['api_key'],
               "password": cred['photoshelter']['password'],
               "email": cred['photoshelter']['email'],
-              "mode": "token"}
+              "mode": "token",
+              "include": "options"}
     headers = {"content-type": "application/x-www-form-urlencoded"}
     base_url = "https://www.photoshelter.com/psapi/v4.0/authenticate"
     response = requests.post(base_url, headers=headers, params=params)
@@ -169,6 +263,7 @@ def init():
                         choices=['download',
                                  'authenticate',
                                  'get_media_metadata',
+                                 'get_media_metadata_custom',
                                  'get_library',
                                  'search',
                                  'iterate_airtable'],
@@ -197,13 +292,18 @@ def main():
         token = args.token
         if args.mode == "get_media_metadata":
             media_id = args.media_id
-            get_media_md(media_id, token)
+            get_media_md(media_id, token, cred)
+        elif args.mode == "get_media_metadata_custom":
+            media_id = args.media_id
+            response = get_media_metadata_custom(media_id, token, cred)
+            pprint(response.json())
+            #parse_response_for_custom_fields(response)
         elif args.mode == "get_library":
             get_library(token, cred)
         elif args.mode == "search":
             manage_search(token, cred)
         elif args.mode == "iterate_airtable":
-            iterate_airtable(token, cred)
+            iterate_airtable(token, cred, download=False)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
 
