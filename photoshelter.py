@@ -21,16 +21,33 @@ def get_credentials():
     return credentials
 
 
-def search(token, cred, page=1, per_page=10):
+def get_session(token, cred):
     '''
-    searches
+    starts a session?
     '''
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
-    params = {"media_type": "image", "org_id": "O0000e.jllXxQUoI",
-              "per_page": per_page, "page": page,
-              "sort_by": "creation_time", "sort_direction": "descending"}
+    params = {"token": token, "api_key": cred['photoshelter']['api_key'],
+              "org_id": "O0000e.jllXxQUoI"}
+    response = requests.post("https://www.photoshelter.com/psapi/v4.0/organization/authenticate",
+                            headers=headers, params=params)
+    return response
+
+
+
+def search(token, cred, page=1, per_page=10):
+    '''
+    searches
+    '''
+    #"org_id": "O0000e.jllXxQUoI",
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    params = {"media_type": "image,video,audio,doc", "org_id": "O0000e.jllXxQUoI",
+              "mode": "library", "per_page": per_page, "page": page,
+              "sort_by": "creation_time", "sort_direction": "descending",
+              "token": token, "api_key": cred['photoshelter']['api_key']}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/search",
                             headers=headers, params=params)
     return response
@@ -40,23 +57,28 @@ def iterate_response(response):
     '''
     moves through response by page, by item
     '''
-    pprint(response.request.__dict__)
-    '''
-    print(len(response.json()['data']))
-    print(response.json()['meta'])
-    input("press any key to display results")
-    '''
-    try:
-        for item in response.json()['data']:
-            #print(item)
-            atbl_rec = airtable.StillImageRecord().from_json(item)
+    #pprint(response.request.__dict__)
+    #print(len(response.json()['data']))
+    #print(response.json()['meta'])
+    #input("press any key to display results")
+    for item in response.json()['data']:
+        #print(item)
+        media_id = item['id']
+        filename = item['attributes']['file_name']
+        atbl_rec = airtable.StillImageRecord()
+        atbl_rec.media_id = media_id
+        atbl_rec.file_name = filename
+        try:
             atbl_rec.send()
-            break
             #print(atbl_rec.__dict__)
             #input("hey")
-    except Exception as exc:
-        print(exc)
-        print(response.__dict__)
+        except RuntimeError as exc:
+            time.sleep(0.5)
+            try:
+                atbl_rec.send()
+            except Exception as exc:
+                print(exc)
+                raise RuntimeError("Airtable is being bad rn")
     return
 
 
@@ -64,14 +86,21 @@ def manage_search(token, cred):
     '''
     manages the search and parsing of results
     '''
+    #actual total results is 165137
     total_results = 100000
     per_page = 100
     total_pages = total_results / per_page
-    page = 501
+    page = 44
+    #response = get_session(token, cred)
+    #print(response.__dict__)
+    #print(response.json()['meta'])
+    #print(response.json()['data'])
+    #input("oi")
     while page <= total_pages:
-        response = search(token, cred, page, per_page)
+        print(f"working through page {page}")
+        response = search(token, cred, page=page, per_page=per_page)
         iterate_response(response)
-        page += 10
+        page += 1
 
 
 def get_library(token, cred):
@@ -194,28 +223,26 @@ def iterate_airtable(token, cred, download=False):
     '''
     print("iterating through Airtable list")
     atbl_conf = airtable.config()
-    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'], "PhotoShelter Data", atbl_conf['api_key'])
-    for atbl_rec_remote in atbl_tbl.all():
+    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
+                                          "PhotoShelter Data test2", atbl_conf['api_key'])
+    for atbl_rec_remote in atbl_tbl.all(view="undownloaded"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
         filename = atbl_rec_local.file_name
-        '''
         response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
         atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
         try:
             atbl_rec_local.permit_number = atbl_rec_with_custom_md.permit_number
         except Exception:
             continue
-        '''
         response = get_media_galleries(atbl_rec_local.media_id, token, cred)
-        if not response.json()['data']:
-            continue
-        atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
-        try:
-            atbl_rec_local.galleries = atbl_rec_with_galleries.galleries
-        except Exception:
-            print("no galleries for that image")
-            continue
+        if response.json()['data']:
+            atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
+            try:
+                atbl_rec_local.galleries = atbl_rec_with_galleries.galleries
+            except Exception:
+                print("no galleries for that image")
+                continue
         '''
         response = get_media_md(atbl_rec_local.media_id, token, cred)
         atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
@@ -283,6 +310,7 @@ def main():
     '''
     args = init()
     cred = get_credentials()
+    print("running")
     if args.mode == 'authenticate':
         authenticate()
     else:

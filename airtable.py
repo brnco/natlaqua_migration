@@ -62,8 +62,8 @@ class NatlAquaAirtableRecord:
             value = json_rec
             #print(f"key_list: {key_list}")
             for key in key_list:
-                print(f"key: {key}")
-                print(f"value: {value}")
+                #print(f"key: {key}")
+                #print(f"value: {value}")
                 try:
                     assert value[key]
                 except (KeyError, AssertionError):
@@ -84,7 +84,8 @@ class NatlAquaAirtableRecord:
                                 all_galleries.append(gallery)
                             except:
                                 pass
-                        value = ', '.join(all_galleries)
+                        value = '; '.join(all_galleries)
+                        break
                     else:
                         for item in reversed(value):
                             try:
@@ -95,20 +96,20 @@ class NatlAquaAirtableRecord:
                 else:
                     #print(f"setting value to {value[key]}")
                     value = value[key]
-                '''
-                if isinstance(value, list):
-                    value = None
-                '''
-                if not value:
-                    continue
-                try:
-                    setattr(instance, attr_name, value)
-                except ValueError as exc:
-                    print(exc)
-                    continue
-                except TypeError as exc:
-                    #means we're not at the end of key_list, hopefully
-                    pass
+            '''
+            if isinstance(value, list):
+                value = None
+            '''
+            if not value:
+                continue
+            try:
+                setattr(instance, attr_name, value)
+            except ValueError as exc:
+                print(exc)
+                continue
+            except TypeError as exc:
+                #means we're not at the end of key_list, hopefully
+                pass
         return instance
 
     def _get_primary_key_info(self):
@@ -217,7 +218,7 @@ class StillImageRecord(Model, NatlAquaAirtableRecord):
 
     class Meta:
         base_id = "appgYr7zoiRmDT0ye"
-        table_name = "PhotoShelter Data"
+        table_name = "PhotoShelter Data - batch1"
         typecast = False
 
         @staticmethod
