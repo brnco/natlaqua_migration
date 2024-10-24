@@ -1,6 +1,7 @@
 '''
 Photoshelter API integration for National Aquarium
 '''
+import csv
 import json
 import time
 import shutil
@@ -35,6 +36,19 @@ def get_session(token, cred):
     return response
 
 
+def find_in_csv(media_id):
+    '''
+    searches CSV of batch 1
+    '''
+    with open("PhotoShelter Data - batch1-CSV Delivery.csv", mode='r', newline='') as csv_file:
+        reader = csv.reader(csv_file)
+        for row in reader:
+            if media_id in row:
+                return True
+            else:
+                continue
+    return False
+
 
 def search(token, cred, page=1, per_page=10):
     '''
@@ -65,9 +79,13 @@ def iterate_response(response):
         #print(item)
         media_id = item['id']
         filename = item['attributes']['file_name']
-        atbl_rec = airtable.StillImageRecord()
-        atbl_rec.media_id = media_id
-        atbl_rec.file_name = filename
+        result = find_in_csv(media_id)
+        if not result:
+            atbl_rec = airtable.StillImageRecord()
+            atbl_rec.media_id = media_id
+            atbl_rec.file_name = filename
+            atbl_rec.send()
+        '''
         try:
             atbl_rec.send()
             #print(atbl_rec.__dict__)
@@ -79,6 +97,7 @@ def iterate_response(response):
             except Exception as exc:
                 print(exc)
                 raise RuntimeError("Airtable is being bad rn")
+        '''
     return
 
 
@@ -87,10 +106,12 @@ def manage_search(token, cred):
     manages the search and parsing of results
     '''
     #actual total results is 165137
-    total_results = 100000
+    #actually 165199
+    #page 1019 had an error
+    total_results = 165199
     per_page = 100
     total_pages = total_results / per_page
-    page = 44
+    page = 32
     #response = get_session(token, cred)
     #print(response.__dict__)
     #print(response.json()['meta'])
@@ -124,7 +145,7 @@ def save_file(url, headers, params, filename=None):
         filepath = url.split("/")[-2]
     else:
         print(f"actually saving the file: {filename}")
-        filepath = pathlib.Path("/run/media/bec/LaCie") / filename
+        filepath = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch1") / filename
     if filepath.exists():
         print("already exists...")
         return filepath
@@ -214,7 +235,6 @@ def get_media_metadata_custom(media_id, token, cred):
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/custom-metadata",
                             params=params, headers=headers)
     return response
-    
 
 
 def iterate_airtable(token, cred, download=False):
@@ -224,11 +244,12 @@ def iterate_airtable(token, cred, download=False):
     print("iterating through Airtable list")
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
-                                          "PhotoShelter Data test2", atbl_conf['api_key'])
+                                          "PhotoShelter Data - batch1", atbl_conf['api_key'])
     for atbl_rec_remote in atbl_tbl.all(view="undownloaded"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
-        filename = atbl_rec_local.file_name
+        orig_filename = pathlib.Path(atbl_rec_local.file_name)
+        filename = orig_filename.stem + "_" + atbl_rec_local.media_id + orig_filename.suffix
         response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
         atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
         try:

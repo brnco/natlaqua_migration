@@ -217,8 +217,9 @@ class StillImageRecord(Model, NatlAquaAirtableRecord):
             continue
 
     class Meta:
-        base_id = "appgYr7zoiRmDT0ye"
-        table_name = "PhotoShelter Data - batch1"
+        # batch 1 - base_id = "appgYr7zoiRmDT0ye"
+        base_id = "appQA1IE68x2OBEGd"
+        table_name = "PhotoShelter Data - batch2"
         typecast = False
 
         @staticmethod
@@ -270,6 +271,6 @@ def find(atbl_tbl, query, field, single_result=False):
     except ValueError:
         raise RuntimeError(f"too many results, expected one and got {len(results)}")
     except Exception as exc:
-        print(exc, stack_info=True)
+        print(exc)
         raise RuntimeError("there was a problem searching Airtable")
 
