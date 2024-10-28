@@ -111,7 +111,7 @@ def manage_search(token, cred):
     total_results = 165199
     per_page = 100
     total_pages = total_results / per_page
-    page = 32
+    page = 1
     #response = get_session(token, cred)
     #print(response.__dict__)
     #print(response.json()['meta'])
@@ -169,7 +169,8 @@ def download_media(media_id, token, cred, filename=None):
               "token": token,
               "download_filetype": "original"}
     headers = {"content-type": "application/x-www-form-urlencoded",
-               "X-PS-Api-Key": cred['photoshelter']['api_key']}
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_12_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/55.0.2883.95 Safari/537.36'}
     #response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download", headers=headers, params=params)
     url = "https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/download"
     filepath = save_file(url, headers, params, filename=filename)
@@ -194,7 +195,7 @@ def get_media_galleries(media_id, token, cred):
                "Cookie": "SSphotoshelter_com_mem=EReh2JutceibFJ4O1MCf; acs=qYvUUr.DgUMRsRiv9ZGXTqcvRSC5nU40u6iI4gA3tD0kPTg3gblPpWUWZMoI2J04R._WMvnkFxT5ylf.cD80V6UlM8jNU2t9iLavVUG8bMjv5hrNa88oNetXV0E6fxXOIM6piQRuZ_9CsGxg6RLtFIYpoX86DBc9iHv3RpWb4JW4SZiluA7w9FC1DMevxDSBj.cHm7XWo7laY0qgpoQwu8Ynp776G5cFGAVFNe3Zp.NhNTgazErxjUzHEIsUYro36PcJHPjRZfUbkQeo6362GrOzfUsbxEYJ5zW6jvGWgtqAnSpuA2uNejyg"}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/galleries",
                             headers=headers, params=params)
-    print(response.__dict__)
+    #print(response.__dict__)
     return response
 
 
@@ -245,6 +246,7 @@ def iterate_airtable(token, cred, download=False):
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Data - batch1", atbl_conf['api_key'])
+    print("getting all records...")
     for atbl_rec_remote in atbl_tbl.all(view="undownloaded"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
@@ -352,7 +354,7 @@ def main():
         elif args.mode == "search":
             manage_search(token, cred)
         elif args.mode == "iterate_airtable":
-            iterate_airtable(token, cred, download=False)
+            iterate_airtable(token, cred, download=True)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
 
