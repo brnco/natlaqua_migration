@@ -8,6 +8,7 @@ import shutil
 import argparse
 import requests
 import pathlib
+import subprocess
 from pprint import pprint
 import airtable
 
@@ -253,8 +254,8 @@ def iterate_airtable(token, cred, download=False):
         orig_filename = pathlib.Path(atbl_rec_local.file_name)
         filename = orig_filename.stem + "_" + atbl_rec_local.media_id + orig_filename.suffix
         response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
-        atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
         try:
+            atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
             atbl_rec_local.permit_number = atbl_rec_with_custom_md.permit_number
         except Exception:
             continue
@@ -284,6 +285,34 @@ def iterate_airtable(token, cred, download=False):
         time.sleep(0.1)
         #print(atbl_rec_local.__dict__)
         #input("yo")
+
+
+def prep_batch(cred):
+    '''
+    prepares a batch
+    '''
+    print("preparing batch...")
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
+                                          "PhotoShelter Data - batch1", atbl_conf['api_key'])
+    print("getting all records...")
+    for atbl_rec_remote in atbl_tbl.all(view="batch1"):
+        atbl_rec = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
+        filename = atbl_rec.file_name_disk
+        path_src = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch1")
+        filepath_src = path_src / filename
+        path_dest = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch0")
+        filepath_dest = path_dest / filename
+        atbl_rec.batch = "1"
+        print(filename)
+        if not filepath_src.exists():
+            atbl_rec.pathproblem = "true"
+            atbl_rec.send()
+        else:
+            cmd = ["mv", str(filepath_src), str(filepath_dest)]
+            subprocess.run(cmd)
+            atbl_rec.moved_to_0 = "true"
+            atbl_rec.send()
 
 
 def authenticate():
@@ -316,7 +345,8 @@ def init():
                                  'get_media_metadata_custom',
                                  'get_library',
                                  'search',
-                                 'iterate_airtable'],
+                                 'iterate_airtable',
+                                 'prep_batch'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -336,6 +366,8 @@ def main():
     print("running")
     if args.mode == 'authenticate':
         authenticate()
+    elif args.mode == "prep_batch":
+        prep_batch(cred)
     else:
         if not args.token:
             raise RuntimeError("you gotta get the token "\
@@ -357,7 +389,6 @@ def main():
             iterate_airtable(token, cred, download=True)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
-
 
 
 if __name__ == "__main__":

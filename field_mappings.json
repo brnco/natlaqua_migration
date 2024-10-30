@@ -18,6 +18,18 @@
         },
         "downloaded": {
             "atbl": "DL"
+        },
+        "batch": {
+            "atbl": "batch"
+        },
+        "file_name_disk": {
+            "atbl": "File Name"
+        },
+        "pathproblem": {
+            "atbl": "pathproblem"
+        },
+        "moved_to_0": {
+            "atbl": "moved_to_0"
         }
     }
 }

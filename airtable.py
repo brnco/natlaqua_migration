@@ -164,7 +164,7 @@ class NatlAquaAirtableRecord:
             except (KeyError, TypeError) as exc:
                 pprint(exc)
                 continue
-            return atbl_rec_remote
+        return atbl_rec_remote
 
     def _save_rec(self, atbl_rec):
         '''
