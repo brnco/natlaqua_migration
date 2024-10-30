@@ -20,7 +20,7 @@ def config():
     this_dirpath = pathlib.Path(__file__).parent.absolute()
     with open(this_dirpath / 'credentials.json', 'r') as config_file:
         config = json.load(config_file)
-    return config['airtable']
+    return config['airtable_part1']
 
 
 def get_api_key():
@@ -219,7 +219,7 @@ class StillImageRecord(Model, NatlAquaAirtableRecord):
     class Meta:
         base_id = "appgYr7zoiRmDT0ye"
         # batch 2 - base_id = "appQA1IE68x2OBEGd"
-        table_name = "PhotoShelter Data - batch1"
+        table_name = "PhotoShelter Data"
         typecast = False
 
         @staticmethod

@@ -4,9 +4,9 @@
             "serv": ["id"],
             "atbl": "media_id"
         },
-        "file_name": {
+        "file_name_ps": {
             "serv": ["attributes", "file_name"],
-            "atbl": "file_name"
+            "atbl": "File Name - PS"
         },
         "permit_number": {
             "serv": ["attributes", "custom_metadata", 0, "value"],
@@ -23,7 +23,7 @@
             "atbl": "batch"
         },
         "file_name_disk": {
-            "atbl": "File Name"
+            "atbl": "File Name - Disk"
         },
         "pathproblem": {
             "atbl": "pathproblem"

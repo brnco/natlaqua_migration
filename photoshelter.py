@@ -146,7 +146,7 @@ def save_file(url, headers, params, filename=None):
         filepath = url.split("/")[-2]
     else:
         print(f"actually saving the file: {filename}")
-        filepath = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch1") / filename
+        filepath = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch2") / filename
     if filepath.exists():
         print("already exists...")
         return filepath
@@ -246,27 +246,25 @@ def iterate_airtable(token, cred, download=False):
     print("iterating through Airtable list")
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
-                                          "PhotoShelter Data - batch1", atbl_conf['api_key'])
+                                          "PhotoShelter Data", atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="undownloaded"):
+    for atbl_rec_remote in atbl_tbl.all(view="batch2 - downloading"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
-        orig_filename = pathlib.Path(atbl_rec_local.file_name)
-        filename = orig_filename.stem + "_" + atbl_rec_local.media_id + orig_filename.suffix
+        filename = pathlib.Path(atbl_rec_local.file_name_disk)
         response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
         try:
             atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
             atbl_rec_local.permit_number = atbl_rec_with_custom_md.permit_number
         except Exception:
-            continue
+            pass
         response = get_media_galleries(atbl_rec_local.media_id, token, cred)
         if response.json()['data']:
             atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
             try:
                 atbl_rec_local.galleries = atbl_rec_with_galleries.galleries
             except Exception:
-                print("no galleries for that image")
-                continue
+                pass
         '''
         response = get_media_md(atbl_rec_local.media_id, token, cred)
         atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
@@ -283,8 +281,6 @@ def iterate_airtable(token, cred, download=False):
                 atbl_rec_local.downloaded = "false"
         atbl_rec_local.save()
         time.sleep(0.1)
-        #print(atbl_rec_local.__dict__)
-        #input("yo")
 
 
 def prep_batch(cred):
@@ -296,7 +292,7 @@ def prep_batch(cred):
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Data - batch1", atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="batch1"):
+    for atbl_rec_remote in atbl_tbl.all(view="batch1 - alternates"):
         atbl_rec = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         filename = atbl_rec.file_name_disk
         path_src = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch1")
