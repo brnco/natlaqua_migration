@@ -384,7 +384,7 @@ def main():
         elif args.mode == "iterate_airtable":
             iterate_airtable(token, cred, download=True)
         elif args.mode == "download":
-            download_media("I0000IcZL.qvRYv8", token, cred)
+            download_media("I0000ftVE3k5sgqg", token, cred)
 
 
 if __name__ == "__main__":
