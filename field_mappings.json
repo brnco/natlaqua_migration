@@ -31,5 +31,22 @@
         "moved_to_0": {
             "atbl": "moved_to_0"
         }
+    },
+    "MovingImageRecord": {
+        "aviary_id": {
+            "atbl": "aviary ID"
+        },
+        "file_name_disk": {
+            "atbl": "File Name - Disk"
+        },
+        "pathproblem": {
+            "atbl": "pathproblem"
+        },
+        "downloaded": {
+            "atbl": "DL"
+        },
+        "url": {
+            "atbl": "URL"
+        }
     }
 }

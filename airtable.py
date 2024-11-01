@@ -234,6 +234,29 @@ class StillImageRecord(Model, NatlAquaAirtableRecord):
         return super().from_json(record, self.serv_atbl_map)
 
 
+class MovingImageRecord(Model, NatlAquaAirtableRecord):
+    '''
+    class for Airtable record for Moving Images housed in Aviary
+    '''
+    field_map = get_field_map("MovingImageRecord")
+    serv_atbl_map = {}
+    for field, mapping in field_map.items():
+        vars()[field] = fields.TextField(mapping['atbl'])
+        try:
+            serv_atbl_map[field] = mapping['serv']
+        except KeyError:
+            continue
+
+    class Meta:
+        base_id: "appQA1IE68x2OBEGd"
+        table_name = "Aviary Data"
+        typecast = False
+
+        @staticmethod
+        def api_key():
+            return get_api_key()       
+
+
 def connect_one_table(base_id, table_name, api_key):
     '''
     connects to Airtable table
