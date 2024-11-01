@@ -146,7 +146,7 @@ def save_file(url, headers, params, filename=None):
         filepath = url.split("/")[-2]
     else:
         print(f"actually saving the file: {filename}")
-        filepath = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch2") / filename
+        filepath = pathlib.Path("/mnt/x/NationalAquarium/PhotoShelter-Data_batch5") / filename
     if filepath.exists():
         print("already exists...")
         return filepath
@@ -248,7 +248,7 @@ def iterate_airtable(token, cred, download=False):
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Data", atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="batch2 - downloading"):
+    for atbl_rec_remote in atbl_tbl.all(view="batch5 - downloading"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
         filename = pathlib.Path(atbl_rec_local.file_name_disk)
