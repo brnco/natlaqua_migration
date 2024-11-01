@@ -20,7 +20,7 @@ def config():
     this_dirpath = pathlib.Path(__file__).parent.absolute()
     with open(this_dirpath / 'credentials.json', 'r') as config_file:
         config = json.load(config_file)
-    return config['airtable_part1']
+    return config['airtable_part2']
 
 
 def get_api_key():
