@@ -248,7 +248,7 @@ class MovingImageRecord(Model, NatlAquaAirtableRecord):
             continue
 
     class Meta:
-        base_id: "appQA1IE68x2OBEGd"
+        base_id = "appQA1IE68x2OBEGd"
         table_name = "Aviary Data"
         typecast = False
 
