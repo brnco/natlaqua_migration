@@ -1,6 +1,7 @@
 '''
 works with Aviary data for National Aquarium
 '''
+import requests
 import json
 import airtable
 import pathlib
@@ -68,6 +69,30 @@ def iterate_airtable(cred, download=False):
         input("yo")
 
 
+def authenticate(cred):
+    '''
+    authenticates to aviary api
+    '''
+    print("authenticating...")
+    session = requests.Session()
+    username = cred['aviary']['username']
+    password = cred['aviary']['password']
+    session.auth = (username, password)
+    response = session.post("https://aqua.aviaryplatform.com/api/v1/auth/sign_in",
+                            json={"email": username,
+                                  "password": password},
+                            headers={'Content-Type': 'application/json',
+                                     'accept': 'application/json',
+                                     'api_key': cred['aviary']['api_key']})
+    response.raise_for_status()
+    auth = {'access-token': response.headers['access-token'],
+            'client': response.headers['client'],
+            'token-type': response.headers['token-type'],
+            'uid': response.headers['uid']}
+    session.headers.update(auth)
+    return session
+
+
 def init():
     '''
     get some command line args and parse em
@@ -75,7 +100,7 @@ def init():
     parser = argparse.ArgumentParser(
             formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--mode", dest="mode",
-                        choices=['download'],
+                        choices=['authenticate','download'],
                         help="the mode of the script")
     args = parser.parse_args()
     return args
@@ -88,7 +113,10 @@ def main():
     args = init()
     cred = get_credentials()
     print("running...")
-    iterate_airtable(cred, False)
+    if args.mode == 'authenticate':
+        session = authenticate(cred)
+    elif args.mode == 'download':
+        iterate_airtable(cred, True)
 
 
 if __name__ == "__main__":
