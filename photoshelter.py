@@ -68,6 +68,25 @@ def search(token, cred, page=1, per_page=10):
     return response
 
 
+def dedupe_part2():
+    '''
+    deduplicates the part2 base
+    '''
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
+                                          "PhotoShelter Data",
+                                          atbl_conf['api_key'])
+    print("getting all records in part2...")
+    for atbl_rec in atbl_tbl.all(view="Everything"):
+        print(atbl_rec)
+        media_id = atbl_rec['fields']['media_id']
+        print(f"working on {media_id}")
+        result = find_in_csv(media_id)
+        if result:
+            print("found duplicate!")
+            atbl_tbl.delete(atbl_rec['id'])
+
+
 def iterate_response(response):
     '''
     moves through response by page, by item
@@ -342,7 +361,8 @@ def init():
                                  'get_library',
                                  'search',
                                  'iterate_airtable',
-                                 'prep_batch'],
+                                 'prep_batch',
+                                 'dedupe_part2'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -364,6 +384,8 @@ def main():
         authenticate()
     elif args.mode == "prep_batch":
         prep_batch(cred)
+    elif args.mode == "dedupe_part2":
+        dedupe_part2()
     else:
         if not args.token:
             raise RuntimeError("you gotta get the token "\
