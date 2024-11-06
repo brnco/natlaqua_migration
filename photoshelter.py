@@ -132,7 +132,7 @@ def manage_search(token, cred):
     per_page = 100
     total_pages = total_results / per_page
     page = 1
-    #response = get_session(token, cred)
+    response = get_session(token, cred)
     #print(response.__dict__)
     #print(response.json()['meta'])
     #print(response.json()['data'])
