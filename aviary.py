@@ -9,7 +9,9 @@ import time
 import shutil
 import argparse
 import subprocess
+from bs4 import BeautifulSoup
 from pprint import pprint
+
 
 def get_credentials():
     '''
@@ -26,7 +28,7 @@ def download_media(url, filename):
     downloads media
     '''
     print("preparing download...")
-    filepath = pathlib.Path("/run/media/bec/LaCie/Aviary-Data_test") / filename
+    filepath = pathlib.Path("/run/media/bec/LaCie/Aviary-Data_test2") / filename
     if filepath.exists():
         print("already exists...")
         return filepath
@@ -38,7 +40,27 @@ def download_media(url, filename):
         print(res.status_code)
         filepath.unlink()
         return False
+    '''
+    cmd = "curl --output " + str(filepath) + " " + url
+    output = subprocess.run(cmd, shell=True, capture_output=True)
+    '''
+    #print(str(output))
+    #print(output.returncode)
     return filepath
+
+
+def get_media_url(embed_url):
+    '''
+    uses the html in the embed url to get the media url
+    hosted on wasabi
+    '''
+    response = requests.get(embed_url)
+    response.raise_for_status()
+    soup = BeautifulSoup(response.content, 'html.parser')
+    video_tag = soup.find('video')
+    video_source = video_tag.source
+    video_url = video_source['src']
+    return video_url
 
 
 def iterate_airtable(cred, download=False):
@@ -55,11 +77,15 @@ def iterate_airtable(cred, download=False):
         atbl_rec_local = airtable.MovingImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on {atbl_rec_local.aviary_id}")
         filename = pathlib.Path(atbl_rec_local.file_name_disk)
-        url = atbl_rec_local.url
-        print(f"url: {url}")
+        embed_url = atbl_rec_local.url
+        media_url = get_media_url(embed_url)
+        #url = "https://s3.us-east-1.wasabisys.com/aviary-p-aqua/collection_resource_files/resource_files/000/103/318/original/open-uri20201218-733-155pxbq.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=U3QOTTBB2JB9O4ZG5WFS%2F20241106%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20241106T220316Z&X-Amz-Expires=111&X-Amz-SignedHeaders=host&X-Amz-Signature=5eeab1e345faedc9f2151a819c82510fd9dc8e6ec1f88bd2847c8471a4a651fe"
+        #media_id = atbl_rec_local.media_id
+        #url = "https://aqua.aviaryplatform.com/embed/media/" & media_id
+        print(f"url: {media_url}")
         print(f"filename: {filename}")
         if download:
-            worked_yn = download_media(url, filename)
+            worked_yn = download_media(media_url, filename)
             if worked_yn:
                 atbl_rec_local.downloaded = "true"
             else:
@@ -67,6 +93,12 @@ def iterate_airtable(cred, download=False):
             atbl_rec_local.save()
         time.sleep(0.1)
         input("yo")
+
+
+'''
+'accept': 'application/json',
+'api_key': cred['aviary']['api_key']})
+'''
 
 
 def authenticate(cred):
@@ -77,13 +109,15 @@ def authenticate(cred):
     session = requests.Session()
     username = cred['aviary']['username']
     password = cred['aviary']['password']
+    print(username)
+    print(password)
+    print(cred['aviary']['api_key'])
     session.auth = (username, password)
     response = session.post("https://aqua.aviaryplatform.com/api/v1/auth/sign_in",
                             json={"email": username,
-                                  "password": password},
-                            headers={'Content-Type': 'application/json',
-                                     'accept': 'application/json',
-                                     'api_key': cred['aviary']['api_key']})
+                                  "password": password,
+                                  "api_key": cred['aviary']['api_key']},
+                            headers={'Content-Type': 'application/json'})
     response.raise_for_status()
     auth = {'access-token': response.headers['access-token'],
             'client': response.headers['client'],
