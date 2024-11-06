@@ -196,7 +196,9 @@ def get_media_galleries(media_id, token, cred):
                "Cookie": "SSphotoshelter_com_mem=EReh2JutceibFJ4O1MCf; acs=qYvUUr.DgUMRsRiv9ZGXTqcvRSC5nU40u6iI4gA3tD0kPTg3gblPpWUWZMoI2J04R._WMvnkFxT5ylf.cD80V6UlM8jNU2t9iLavVUG8bMjv5hrNa88oNetXV0E6fxXOIM6piQRuZ_9CsGxg6RLtFIYpoX86DBc9iHv3RpWb4JW4SZiluA7w9FC1DMevxDSBj.cHm7XWo7laY0qgpoQwu8Ynp776G5cFGAVFNe3Zp.NhNTgazErxjUzHEIsUYro36PcJHPjRZfUbkQeo6362GrOzfUsbxEYJ5zW6jvGWgtqAnSpuA2uNejyg"}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/galleries",
                             headers=headers, params=params)
-    #print(response.__dict__)
+    pprint(response._content.decode("utf-8"))
+    print(response.status_code)
+    input("yo")
     return response
 
 
@@ -243,21 +245,25 @@ def iterate_airtable(token, cred, download=False):
     '''
     iterates through airtable list
     '''
+    #print("getting photoshelter session...")
+    #response = get_session(token, cred)
     print("iterating through Airtable list")
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Data", atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="batch2 - downloading"):
+    for atbl_rec_remote in atbl_tbl.all(view="batch3 - downloaded - empty galleries"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
         filename = pathlib.Path(atbl_rec_local.file_name_disk)
+        '''
         response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
         try:
             atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
             atbl_rec_local.permit_number = atbl_rec_with_custom_md.permit_number
         except Exception:
             pass
+        '''
         response = get_media_galleries(atbl_rec_local.media_id, token, cred)
         if response.json()['data']:
             atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
@@ -382,7 +388,7 @@ def main():
         elif args.mode == "search":
             manage_search(token, cred)
         elif args.mode == "iterate_airtable":
-            iterate_airtable(token, cred, download=True)
+            iterate_airtable(token, cred, download=False)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
 
