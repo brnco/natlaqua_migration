@@ -26,7 +26,7 @@ def download_media(url, filename):
     downloads media
     '''
     print("preparing download...")
-    filepath = pathlib.Path("/run/media/bec/LaCie/Aviary-Data_test") / filename
+    filepath = pathlib.Path("/home/bec/Downloads/") / filename
     if filepath.exists():
         print("already exists...")
         return filepath
