@@ -27,11 +27,11 @@ def download_media(url, filename):
     '''
     downloads media
     '''
-    print("preparing download...")
-    filepath = pathlib.Path("/run/media/bec/LaCie/Aviary-Data_test2") / filename
+    filepath = pathlib.Path("/run/media/bec/LaCie/Aviary-Data") / filename
     if filepath.exists():
         print("already exists...")
         return filepath
+    print("downloading...")
     with requests.get(url, stream=True) as res:
         with open(filepath, "wb") as file:
             shutil.copyfileobj(res.raw, file)
@@ -54,13 +54,16 @@ def get_media_url(embed_url):
     uses the html in the embed url to get the media url
     hosted on wasabi
     '''
-    response = requests.get(embed_url)
-    response.raise_for_status()
-    soup = BeautifulSoup(response.content, 'html.parser')
-    video_tag = soup.find('video')
-    video_source = video_tag.source
-    video_url = video_source['src']
-    return video_url
+    try:
+        response = requests.get(embed_url)
+        response.raise_for_status()
+        soup = BeautifulSoup(response.content, 'html.parser')
+        video_tag = soup.find('video')
+        video_source = video_tag.source
+        video_url = video_source['src']
+        return video_url
+    except Exception as exc:
+        return False
 
 
 def iterate_airtable(cred, download=False):
@@ -73,12 +76,16 @@ def iterate_airtable(cred, download=False):
                                           'Aviary Data',
                                           atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="test"):
+    for atbl_rec_remote in atbl_tbl.all(view="Ntl Aquarium - downloading"):
         atbl_rec_local = airtable.MovingImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on {atbl_rec_local.aviary_id}")
         filename = pathlib.Path(atbl_rec_local.file_name_disk)
         embed_url = atbl_rec_local.url
         media_url = get_media_url(embed_url)
+        if not media_url:
+            atbl_rec_local.downloaded = "false"
+            atbl_rec_local.save()
+            continue
         #url = "https://s3.us-east-1.wasabisys.com/aviary-p-aqua/collection_resource_files/resource_files/000/103/318/original/open-uri20201218-733-155pxbq.mp4?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=U3QOTTBB2JB9O4ZG5WFS%2F20241106%2Fus-east-1%2Fs3%2Faws4_request&X-Amz-Date=20241106T220316Z&X-Amz-Expires=111&X-Amz-SignedHeaders=host&X-Amz-Signature=5eeab1e345faedc9f2151a819c82510fd9dc8e6ec1f88bd2847c8471a4a651fe"
         #media_id = atbl_rec_local.media_id
         #url = "https://aqua.aviaryplatform.com/embed/media/" & media_id
@@ -92,7 +99,6 @@ def iterate_airtable(cred, download=False):
                 atbl_rec_local.downloaded = "false"
             atbl_rec_local.save()
         time.sleep(0.1)
-        input("yo")
 
 
 '''
