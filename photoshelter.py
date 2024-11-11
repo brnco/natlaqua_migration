@@ -9,6 +9,7 @@ import argparse
 import requests
 import pathlib
 import subprocess
+import urllib
 from pprint import pprint
 import airtable
 
@@ -146,7 +147,7 @@ def save_file(url, headers, params, filename=None):
         filepath = url.split("/")[-2]
     else:
         print(f"actually saving the file: {filename}")
-        filepath = pathlib.Path("/mnt/x/NationalAquarium/PhotoShelter-Data_batch5") / filename
+        filepath = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch5") / filename
     if filepath.exists():
         print("already exists...")
         return filepath
@@ -237,6 +238,41 @@ def get_media_metadata_custom(media_id, token, cred):
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/custom-metadata",
                             params=params, headers=headers)
     return response
+
+
+def fill_in_table(token, cred):
+    '''
+    for airtable which only has media_id
+    fill in the rest
+    '''
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
+                                          "Photoshelter Data", atbl_conf['api_key'])
+    print("getting all records...")
+    for atbl_rec in atbl_tbl.all(view="batch5 - downloading"):
+        media_id = atbl_rec['fields']['media_id']
+        params = {"api_key": cred['photoshelter']['api_key'],
+                  "password": cred['photoshelter']['password'],
+                  "token": token,
+                  "Auth-Token": token,
+                  "org_id": "O0000e.jllXxQUoI",
+                  "mode": "library",
+                  "media_ids": media_id}
+        '''
+        headers = {"content-type": "application/x-www-form-urlencoded",
+                   "Cookie": "SSphotoshelter_com_mem=EReh2JutceibFJ4O1MCf; acs=qYvUUr.DgUMRsRiv9ZGXTqcvRSC5nU40u6iI4gA3tD0kPTg3gblPpWUWZMoI2J04R._WMvnkFxT5ylf.cD80V6UlM8jNU2t9iLavVUG8bMjv5hrNa88oNetXV0E6fxXOIM6piQRuZ_9CsGxg6RLtFIYpoX86DBc9iHv3RpWb4JW4SZiluA7w9FC1DMevxDSBj.cHm7XWo7laY0qgpoQwu8Ynp776G5cFGAVFNe3Zp.NhNTgazErxjUzHEIsUYro36PcJHPjRZfUbkQeo6362GrOzfUsbxEYJ5zW6jvGWgtqAnSpuA2uNejyg",
+                   "X-PS-Api-Key": cred['photoshelter']['api_key']}
+        response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/", headers=headers, params=params)
+        '''
+        params = urllib.parse.urlencode(params)
+        url = "https://www.photoshelter.com/psapi/v4.0/media/%s" % params
+        print(url)
+        req = urllib.request.Request(url)
+        req.add_header("content-type", "application/x-www-form-urlencoded")
+        req.add_header("X-PS-Api_Key", cred['photoshelter']['api_key'])
+        response = urllib.request.urlopen(req).read().decode("utf-8")
+        print(response)
+        input("yo")
 
 
 def iterate_airtable(token, cred, download=False):
@@ -342,7 +378,8 @@ def init():
                                  'get_library',
                                  'search',
                                  'iterate_airtable',
-                                 'prep_batch'],
+                                 'prep_batch',
+                                 'fill_in_table'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -383,6 +420,8 @@ def main():
             manage_search(token, cred)
         elif args.mode == "iterate_airtable":
             iterate_airtable(token, cred, download=True)
+        elif args.mode == 'fill_in_table':
+            fill_in_table(token, cred)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
 
