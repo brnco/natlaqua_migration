@@ -330,6 +330,31 @@ def prep_batch(cred):
             atbl_rec.send()
 
 
+def get_every_gallery(token, cred):
+    '''
+    gets a list of every gallery
+    eventually, will update that gallery's permissions
+    '''
+    print("getting every gallery...")
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "Auth-Token": token,
+              "password": cred['photoshelter']['password'],
+              "token": token,
+              "page": 1, "per_page":3,
+              "include": "gallery,children",
+              "sort_by": "name",
+              "sort_direct": "descending",
+              "parent": "C0000dxJq4mmZhds"}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries",
+                            params=params, headers=headers)
+    pprint(response.json())
+    pprint(response.headers)
+
+
+
 def authenticate():
     '''
     do the thing
@@ -362,7 +387,8 @@ def init():
                                  'search',
                                  'iterate_airtable',
                                  'prep_batch',
-                                 'dedupe_part2'],
+                                 'dedupe_part2',
+                                 'get_every_gallery'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -407,7 +433,8 @@ def main():
             iterate_airtable(token, cred, download=True)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
-
+        elif args.mode == "get_every_gallery":
+            get_every_gallery(token, cred)
 
 if __name__ == "__main__":
     main()
