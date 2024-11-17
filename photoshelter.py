@@ -258,6 +258,29 @@ def get_media_metadata_custom(media_id, token, cred):
     return response
 
 
+def get_file_name(media_id, token, cred):
+    '''
+    returns the file name for a given media id
+    '''
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    params = {"include": "media",
+              "token": token,
+              "password": cred['photoshelter']['password'],
+              "api_key": cred['photoshelter']['api_key']}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id,
+                            headers=headers, params=params)
+    try:
+        response.raise_for_status()
+        filename = response.json()['data']['attributes']['file_name']
+        pprint(filename)
+    except:
+        filename = None
+    return filename
+
+
+
 def iterate_airtable(token, cred, download=False):
     '''
     iterates through airtable list
@@ -267,9 +290,15 @@ def iterate_airtable(token, cred, download=False):
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Data", atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="batch2 - downloading"):
+    for atbl_rec_remote in atbl_tbl.all(view="needs filename"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
+        filename = get_file_name(atbl_rec_local.media_id, token, cred)
+        if not filename:
+            continue
+        atbl_rec_local.file_name_ps = filename
+        atbl_rec_local.save()
+        continue
         filename = pathlib.Path(atbl_rec_local.file_name_disk)
         response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
         try:
@@ -430,7 +459,7 @@ def main():
         elif args.mode == "search":
             manage_search(token, cred)
         elif args.mode == "iterate_airtable":
-            iterate_airtable(token, cred, download=True)
+            iterate_airtable(token, cred, download=False)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
         elif args.mode == "get_every_gallery":
