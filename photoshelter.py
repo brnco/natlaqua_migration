@@ -169,13 +169,23 @@ def save_file(url, headers, params, filename=None):
     if filepath.exists():
         print("already exists...")
         return filepath
-    with requests.get(url, stream=True, headers=headers, params=params) as res:
-        with open(filepath, "wb") as file:
-            shutil.copyfileobj(res.raw, file)
-    if res.status_code != 200:
-        print("did not download, probably")
-        print(res.status_code)
-        filepath.unlink()
+    i = 0
+    while i < 10:
+        try:
+            with requests.get(url, stream=True, headers=headers, params=params) as res:
+                with open(filepath, "wb") as file:
+                    shutil.copyfileobj(res.raw, file)
+            if res.status_code != 200:
+                print("did not download, probably")
+                print(res.status_code)
+                filepath.unlink()
+            return filepath
+        except requests.ConnectionError:
+            time.sleep(0.5)
+            i += 1
+            continue
+    print("maximum retries hit...")
+    filepath.unlink()
     return filepath
 
 
