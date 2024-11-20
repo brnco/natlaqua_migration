@@ -165,17 +165,27 @@ def save_file(url, headers, params, filename=None):
         filepath = url.split("/")[-2]
     else:
         print(f"actually saving the file: {filename}")
-        filepath = pathlib.Path("/run/media/bec/LaCie/PhotoShelter-Data_batch2") / filename
+        filepath = pathlib.Path("/tub/NationalAquarium/PhotoShelter-Data_batch6") / filename
     if filepath.exists():
         print("already exists...")
         return filepath
-    with requests.get(url, stream=True, headers=headers, params=params) as res:
-        with open(filepath, "wb") as file:
-            shutil.copyfileobj(res.raw, file)
-    if res.status_code != 200:
-        print("did not download, probably")
-        print(res.status_code)
-        filepath.unlink()
+    i = 0
+    while i < 10:
+        try:
+            with requests.get(url, stream=True, headers=headers, params=params) as res:
+                with open(filepath, "wb") as file:
+                    shutil.copyfileobj(res.raw, file)
+            if res.status_code != 200:
+                print("did not download, probably")
+                print(res.status_code)
+                filepath.unlink()
+            return filepath
+        except requests.COnnectionError:
+            time.sleep(0.5)
+            i += 1
+            continue
+    print("maximum retries hit...")
+    filepath.unlink()
     return filepath
 
 
@@ -290,15 +300,17 @@ def iterate_airtable(token, cred, download=False):
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Data", atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="needs filename"):
+    for atbl_rec_remote in atbl_tbl.all(view="batch6 - downloading"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
+        '''
         filename = get_file_name(atbl_rec_local.media_id, token, cred)
         if not filename:
             continue
         atbl_rec_local.file_name_ps = filename
         atbl_rec_local.save()
         continue
+        '''
         filename = pathlib.Path(atbl_rec_local.file_name_disk)
         response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
         try:
@@ -306,6 +318,7 @@ def iterate_airtable(token, cred, download=False):
             atbl_rec_local.permit_number = atbl_rec_with_custom_md.permit_number
         except Exception:
             pass
+        '''
         response = get_media_galleries(atbl_rec_local.media_id, token, cred)
         if response.json()['data']:
             atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
@@ -313,7 +326,6 @@ def iterate_airtable(token, cred, download=False):
                 atbl_rec_local.galleries = atbl_rec_with_galleries.galleries
             except Exception:
                 pass
-        '''
         response = get_media_md(atbl_rec_local.media_id, token, cred)
         atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
         try:
@@ -459,7 +471,7 @@ def main():
         elif args.mode == "search":
             manage_search(token, cred)
         elif args.mode == "iterate_airtable":
-            iterate_airtable(token, cred, download=False)
+            iterate_airtable(token, cred, download=True)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
         elif args.mode == "get_every_gallery":
