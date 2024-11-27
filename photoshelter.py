@@ -311,6 +311,43 @@ def prep_batch(cred):
             atbl_rec.send()
 
 
+def verify_galleries(token, cred):
+    '''
+    goes through the gallery list
+    '''
+    print("getting every gallery...")
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "Auth-Token": token,
+              "password": cred['photoshelter']['password'],
+              "token": token,
+              "page": 1, "per_page":3,
+              "include": "gallery,children",
+              "sort_by": "name",
+              "sort_direct": "descending",
+              "parent": "C0000dxJq4mmZhds"}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries",
+                            params=params, headers=headers)
+    pprint(response.json())
+
+
+def get_session_info(token):
+    '''
+    man I am just trying to figure this out
+    '''
+    cred = get_credentials()
+    params = {"include": "organizations",
+              "api_key": cred['photoshelter']['api_key']}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Auth-Token": token}
+    base_url = "https://www.photoshelter.com/psapi/v4.0/user/session"
+    response = requests.get(base_url, headers=headers, params=params)
+    response.raise_for_status()
+    return response.json()
+
+
 def authenticate():
     '''
     do the thing
@@ -328,6 +365,43 @@ def authenticate():
     print("click on that ^ url and copy the token it gives you")
 
 
+def authenticate_org(token):
+    '''
+    authenticates to the org?
+    idk man this api sucks
+    '''
+    cred = get_credentials()
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "password": cred['photoshelter']['password'],
+              "email": cred['photoshelter']['email'],
+              "org_id": "O0000e.jllXxQUoI"}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Auth-Token": token}
+    data = {"org_id": "O0000e.jllXxQUoI",
+            "password": cred['photoshelter']['password'],
+            "email": cred['photoshelter']['email']}
+    base_url = "https://www.photoshelter.com/psapi/v4.0/organization/authenticate"
+    response = requests.post(base_url, json=data, headers=headers, params=params)
+    response.raise_for_status()
+    print(response.status_code)
+    print(response.json())
+
+
+def log_in():
+    '''
+    wrapper for all this other crap
+    '''
+    print("logging in...")
+    authenticate()
+    print("please enter the token from that url, below")
+    token = input("Token: ")
+    print("authenticating to the org...")
+    authenticate_org(token)
+    session_info = get_session_info(token)
+    print("check for org_id below:")
+    pprint(session_info)
+
+
 def init():
     '''
     get some command line args and parse em
@@ -335,14 +409,18 @@ def init():
     parser = argparse.ArgumentParser(
             formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("--mode", dest="mode",
-                        choices=['download',
+                        choices=['log_in',
+                                 'download',
                                  'authenticate',
+                                 'authenticate_org',
+                                 'get_session_info',
                                  'get_media_metadata',
                                  'get_media_metadata_custom',
                                  'get_library',
                                  'search',
                                  'iterate_airtable',
-                                 'prep_batch'],
+                                 'prep_batch',
+                                 'verify_galleries'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -360,7 +438,9 @@ def main():
     args = init()
     cred = get_credentials()
     print("running")
-    if args.mode == 'authenticate':
+    if args.mode == 'log_in':
+        log_in()
+    elif args.mode == 'authenticate':
         authenticate()
     elif args.mode == "prep_batch":
         prep_batch(cred)
@@ -372,6 +452,10 @@ def main():
         if args.mode == "get_media_metadata":
             media_id = args.media_id
             get_media_md(media_id, token, cred)
+        elif args.mode == 'authenticate_org':
+              authenticate_org(token)
+        elif args.mode == 'get_session_info':
+            get_session_info(token)
         elif args.mode == "get_media_metadata_custom":
             media_id = args.media_id
             response = get_media_metadata_custom(media_id, token, cred)
@@ -382,9 +466,11 @@ def main():
         elif args.mode == "search":
             manage_search(token, cred)
         elif args.mode == "iterate_airtable":
-            iterate_airtable(token, cred, download=True)
+            iterate_airtable(token, cred, download=False)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
+        elif args.mode == "verify_galleries":
+            verify_galleries(token, cred)
 
 
 if __name__ == "__main__":
