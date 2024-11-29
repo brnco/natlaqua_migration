@@ -189,14 +189,17 @@ def get_media_galleries(media_id, token, cred):
     params = {"api_key": cred['photoshelter']['api_key'],
               "password": cred['photoshelter']['password'],
               "Auth-Token": token,
-              "mode": "invited",
+              "mode": "library",
               "include": "gallery"}
     headers = {"content-type": "application/x-www-form-urlencoded",
-               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Api-Key": cred['photoshelter']['api_key']}
+    '''
                "Cookie": "SSphotoshelter_com_mem=EReh2JutceibFJ4O1MCf; acs=qYvUUr.DgUMRsRiv9ZGXTqcvRSC5nU40u6iI4gA3tD0kPTg3gblPpWUWZMoI2J04R._WMvnkFxT5ylf.cD80V6UlM8jNU2t9iLavVUG8bMjv5hrNa88oNetXV0E6fxXOIM6piQRuZ_9CsGxg6RLtFIYpoX86DBc9iHv3RpWb4JW4SZiluA7w9FC1DMevxDSBj.cHm7XWo7laY0qgpoQwu8Ynp776G5cFGAVFNe3Zp.NhNTgazErxjUzHEIsUYro36PcJHPjRZfUbkQeo6362GrOzfUsbxEYJ5zW6jvGWgtqAnSpuA2uNejyg"}
+    '''
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/galleries",
                             headers=headers, params=params)
-    #print(response.__dict__)
+    print(response.__dict__)
+    input("yo")
     return response
 
 
@@ -248,7 +251,7 @@ def iterate_airtable(token, cred, download=False):
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Data", atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="batch2 - downloading"):
+    for atbl_rec_remote in atbl_tbl.all(view="Everything"):
         atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
         print(f"working on: {atbl_rec_local.media_id}")
         filename = pathlib.Path(atbl_rec_local.file_name_disk)
@@ -259,6 +262,7 @@ def iterate_airtable(token, cred, download=False):
         except Exception:
             pass
         response = get_media_galleries(atbl_rec_local.media_id, token, cred)
+        print(response.json())
         if response.json()['data']:
             atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
             try:
@@ -314,14 +318,25 @@ def prep_batch(cred):
 def verify_galleries(token, cred):
     '''
     goes through the gallery list
+    ok so you need to:
+    generate a list of every collection
+    loop through every collection and get every gallery
+    loop through every gallery:
+        loop through every permission in ['includes']['data']['permissions']:
+            ensure that there's 1 permission with:
+            ['attributes']['download_image_filetype'] = 'original'
+            ['attributes']['contact_id'] = 'CT000F9iZ6WqBKPw'
+            and 1 permission with:
+            ['attributes']['download_image_filetype'] = 'original'
+            ['attrbiutes']['password'] = your_password
+        check that ['access']['data']['attributes']['native'] = 'permission'
     '''
     print("getting every gallery...")
     params = {"api_key": cred['photoshelter']['api_key'],
               "Auth-Token": token,
               "password": cred['photoshelter']['password'],
               "token": token,
-              "page": 1, "per_page":3,
-              "include": "gallery,children",
+              "include": "permissions,access,path",
               "sort_by": "name",
               "sort_direct": "descending",
               "parent": "C0000dxJq4mmZhds"}
@@ -330,7 +345,9 @@ def verify_galleries(token, cred):
                "X-PS-Auth-Token": token}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries",
                             params=params, headers=headers)
-    pprint(response.json())
+    for item in response.json()['data']:
+        pprint(item)
+        input("yo")
 
 
 def get_session_info(token):
