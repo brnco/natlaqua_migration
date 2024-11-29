@@ -123,7 +123,7 @@ class NatlAquaAirtableRecord:
         for send()
         gets primary key name and value
         '''
-        primary_field_name = "media_id"
+        primary_field_name = "collection_id"
         self_primary_field_value = self._fields[primary_field_name]
         '''
         atbl_tbl = self.get_table()
