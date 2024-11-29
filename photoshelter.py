@@ -355,11 +355,7 @@ def collections_search(token, cred):
     searches collections
     '''
     print("searching collections...")
-    params = {"api_key": cred['photoshelter']['api_key'],
-              "Auth-Token": token,
-              "token": token,
-              "password": cred['photoshelter']['password'],
-              "include": "permissions,parent",
+    params = {"include": "permissions,parent",
               "sort_by": "name",
               "sort_direction": "descending"}
     headers = {"content-type": "application/x-www-form-urlencoded",
@@ -368,7 +364,11 @@ def collections_search(token, cred):
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/collections",
                             params=params, headers=headers)
     response.raise_for_status()
-    pprint(response.json())
+    for coll in response.json()['data']:
+        atbl_rec_coll = airtable.CollectionRecord().from_json(coll)
+        pprint(atbl_rec_coll.__dict__)
+        atbl_rec_coll.send()
+        input("yo")
 
 
 def get_session_info(token):

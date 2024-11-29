@@ -60,22 +60,22 @@ class NatlAquaAirtableRecord:
         #print(f"json_rec: {json_rec}")
         for attr_name, key_list in field_map.items():
             value = json_rec
-            #print(f"key_list: {key_list}")
+            print(f"key_list: {key_list}")
             for key in key_list:
-                #print(f"key: {key}")
-                #print(f"value: {value}")
+                print(f"key: {key}")
+                print(f"value: {value}")
                 try:
                     assert value[key]
                 except (KeyError, AssertionError):
-                    #print("key/ assert error, setting value to none")
+                    print("key/ assert error, setting value to none")
                     value = None
                     break
                 except TypeError:
-                    #print("type error")
-                    #print(f"value: {value}")
+                    print("type error")
+                    print(f"value: {value}")
                     pass
                 if isinstance(value, list):
-                    #print("in isinstance list")
+                    print("in isinstance list")
                     if attr_name == "galleries":
                         all_galleries = []
                         for item in value:
@@ -94,7 +94,7 @@ class NatlAquaAirtableRecord:
                             except Exception:
                                 pass
                 else:
-                    #print(f"setting value to {value[key]}")
+                    print(f"setting value to {value[key]}")
                     value = value[key]
             '''
             if isinstance(value, list):
@@ -109,7 +109,13 @@ class NatlAquaAirtableRecord:
                 continue
             except TypeError as exc:
                 #means we're not at the end of key_list, hopefully
-                pass
+                if attr_name == "permissions":
+                    last_index = len(key_list) - 1
+                    if key_list.index(key) == last_index:
+                        #we're at the last key
+                        setattr(instance, attr_name, str(value))
+                else:
+                    pass
         return instance
 
     def _get_primary_key_info(self):
@@ -202,6 +208,35 @@ class NatlAquaAirtableRecord:
         atbl_rec_remote = self._save_rec(atbl_rec_remote)
         return atbl_rec_remote
 
+
+class CollectionRecord(Model, NatlAquaAirtableRecord):
+    '''
+    object class for collections in PhotoShelter
+    '''
+    field_map = get_field_map("CollectionRecord")
+    serv_atbl_map = {}
+    for field, mapping in field_map.items():
+        vars()[field] = fields.TextField(mapping['atbl'])
+        try:
+            serv_atbl_map[field] = mapping['serv']
+        except KeyError:
+            continue
+
+    class Meta:
+        base_id = "appQA1IE68x2OBEGd"
+        table_name = "PhotoShelter Collections"
+        typecast = False
+
+        @staticmethod
+        def api_key():
+            return get_api_key()       
+
+    def from_json(self, record):
+        '''
+        creates an Airtable record from JSON response
+        uses serv -> atbl map
+        '''
+        return super().from_json(record, self.serv_atbl_map)
 
 class StillImageRecord(Model, NatlAquaAirtableRecord):
     '''

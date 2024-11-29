@@ -51,21 +51,31 @@
     },
     "CollectionRecord": {
         "collection_id": {
+            "serv": ["id"],
             "atbl": "collection_id"
         },
         "name": {
+            "serv": ["attributes", "name"],
             "atbl": "Name"
         },
+        "url": {
+            "serv": ["links", "self"],
+            "atbl": "URL"
+        },
         "description": {
+            "serv": ["attributes", "description"],
             "atbl": "Description"
         },
         "permissions": {
+            "serv": ["includes", "permissions", "data"],
             "atbl": "Permissions"
         },
         "parent_collection_id": {
+            "serv": ["includes", "parent", "data", "id"],
             "atbl": "parent_collection_id"
         },
         "parent_collection_name": {
+            "serv": ["includes", "parent", "data", "attributes", "name"],
             "atbl": "parent_collection_name"
         }
     }
