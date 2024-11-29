@@ -338,7 +338,7 @@ def verify_galleries(token, cred):
               "token": token,
               "include": "permissions,access,path",
               "sort_by": "name",
-              "sort_direct": "descending",
+              "sort_direction": "descending",
               "parent": "C0000dxJq4mmZhds"}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key'],
@@ -348,6 +348,27 @@ def verify_galleries(token, cred):
     for item in response.json()['data']:
         pprint(item)
         input("yo")
+
+
+def collections_search(token, cred):
+    '''
+    searches collections
+    '''
+    print("searching collections...")
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "Auth-Token": token,
+              "token": token,
+              "password": cred['photoshelter']['password'],
+              "include": "permissions,parent",
+              "sort_by": "name",
+              "sort_direction": "descending"}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/collections",
+                            params=params, headers=headers)
+    response.raise_for_status()
+    pprint(response.json())
 
 
 def get_session_info(token):
@@ -437,7 +458,8 @@ def init():
                                  'search',
                                  'iterate_airtable',
                                  'prep_batch',
-                                 'verify_galleries'],
+                                 'verify_galleries',
+                                 'collections_search'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -488,6 +510,8 @@ def main():
             download_media("I0000IcZL.qvRYv8", token, cred)
         elif args.mode == "verify_galleries":
             verify_galleries(token, cred)
+        elif args.mode == "collections_search":
+            collections_search(token, cred)
 
 
 if __name__ == "__main__":

@@ -48,5 +48,25 @@
         "url": {
             "atbl": "URL"
         }
+    },
+    "CollectionRecord": {
+        "collection_id": {
+            "atbl": "collection_id"
+        },
+        "name": {
+            "atbl": "Name"
+        },
+        "description": {
+            "atbl": "Description"
+        },
+        "permissions": {
+            "atbl": "Permissions"
+        },
+        "parent_collection_id": {
+            "atbl": "parent_collection_id"
+        },
+        "parent_collection_name": {
+            "atbl": "parent_collection_name"
+        }
     }
 }
