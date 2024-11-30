@@ -315,7 +315,7 @@ def prep_batch(cred):
             atbl_rec.send()
 
 
-def verify_galleries(token, cred):
+def galleries_search(collection_id, token, cred):
     '''
     goes through the gallery list
     ok so you need to:
@@ -331,23 +331,38 @@ def verify_galleries(token, cred):
             ['attrbiutes']['password'] = your_password
         check that ['access']['data']['attributes']['native'] = 'permission'
     '''
-    print("getting every gallery...")
+    print("searching galleries...")
     params = {"api_key": cred['photoshelter']['api_key'],
               "Auth-Token": token,
               "password": cred['photoshelter']['password'],
               "token": token,
-              "include": "permissions,access,path",
+              "include": "permissions,parent,child-count",
               "sort_by": "name",
               "sort_direction": "descending",
-              "parent": "C0000dxJq4mmZhds"}
+              "parent": collection_id}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries",
                             params=params, headers=headers)
-    for item in response.json()['data']:
-        pprint(item)
-        input("yo")
+    for gallery in response.json()['data']:
+        pprint(gallery)
+        atbl_rec_gall = airtable.GalleryRecord().from_json(gallery)
+        pprint(atbl_rec_gall.__dict__)
+        atbl_rec_gall.send()
+        time.sleep(0.2)
+
+
+def manage_galleries_search(token, cred):
+    '''
+    wraps galleries_search to search for every gallery in every collection in Airtable
+    '''
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
+                                          "PhotoShelter Collections", atbl_conf['api_key'])
+    for atbl_rec in atbl_tbl.all():
+        collection_id = atbl_rec['fields']['collection_id']
+        galleries_search(collection_id, token, cred)
 
 
 def collections_search(token, cred):
@@ -368,7 +383,7 @@ def collections_search(token, cred):
         atbl_rec_coll = airtable.CollectionRecord().from_json(coll)
         pprint(atbl_rec_coll.__dict__)
         atbl_rec_coll.send()
-        input("yo")
+        #input("yo")
 
 
 def get_session_info(token):
@@ -458,7 +473,7 @@ def init():
                                  'search',
                                  'iterate_airtable',
                                  'prep_batch',
-                                 'verify_galleries',
+                                 'galleries_search',
                                  'collections_search'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
@@ -508,8 +523,8 @@ def main():
             iterate_airtable(token, cred, download=False)
         elif args.mode == "download":
             download_media("I0000IcZL.qvRYv8", token, cred)
-        elif args.mode == "verify_galleries":
-            verify_galleries(token, cred)
+        elif args.mode == "galleries_search":
+            manage_galleries_search(token, cred)
         elif args.mode == "collections_search":
             collections_search(token, cred)
 

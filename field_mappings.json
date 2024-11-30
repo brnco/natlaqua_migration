@@ -78,5 +78,39 @@
             "serv": ["includes", "parent", "data", "attributes", "name"],
             "atbl": "parent_collection_name"
         }
+    },
+    "GalleryRecord": {
+        "gallery_id": {
+            "serv": ["id"],
+            "atbl": "gallery_id"
+        },
+        "name": {
+            "serv": ["attributes", "name"],
+            "atbl": "Name"
+        },
+        "url": {
+            "serv": ["links", "self"],
+            "atbl": "URL"
+        },
+        "description": {
+            "serv": ["attributes", "description"],
+            "atbl": "Description"
+        },
+        "permissions": {
+            "serv": ["includes", "permissions", "data"],
+            "atbl": "Permissions"
+        },
+        "parent_collection_id": {
+            "serv": ["includes", "parent", "data", "id"],
+            "atbl": "parent_collection_id"
+        },
+        "parent_collection_name": {
+            "serv": ["includes", "parent", "data", "attributes", "name"],
+            "atbl": "parent_collection_name"
+        },
+        "child_count": {
+            "serv": ["includes", "child-count", "data", "attributes"],
+            "atbl": "Child Count"
+        }
     }
 }
