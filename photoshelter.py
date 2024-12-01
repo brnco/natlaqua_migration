@@ -326,15 +326,23 @@ def get_media_of_gallery(gallery_id, token, cred):
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
-    response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries/" + gallery_id + "/children",
-                            params=params, headers=headers)
-    response.raise_for_status()
-    try:
-        foo = response.json()['data']
-    except:
-        return
-    pprint(response.json())
-    return response.json()['data']
+    i = 0
+    while i < 10:
+        try:
+            response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries/" + gallery_id + "/children",
+                                    params=params, headers=headers)
+            pprint(response.json())
+            response.raise_for_status()
+            try:
+                return response.json()['data']
+            except:
+                return None
+        except requests.ConnectionError:
+            time.sleep(0.5)
+            i += 1
+            continue
+    print("maximum retries hit...")
+    raise RuntimeError("I think there's a connection problem bro")
 
 
 def get_media_in_galleries(token, cred):
@@ -348,6 +356,8 @@ def get_media_in_galleries(token, cred):
     for atbl_rec_gall in atbl_tbl.all(view="no media"):
         gallery_id = atbl_rec_gall['fields']['gallery_id']
         gallery_data = get_media_of_gallery(gallery_id, token, cred)
+        if not gallery_data:
+            continue
         all_media = []
         for media in gallery_data:
             media_id = media['id']
