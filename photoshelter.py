@@ -315,21 +315,50 @@ def prep_batch(cred):
             atbl_rec.send()
 
 
+def get_media_of_gallery(gallery_id, token, cred):
+    '''
+    gets the media in a single gallery
+    '''
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "Auth-Token": token,
+              "password": cred['photoshelter']['password'],
+              "token": token}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries/" + gallery_id + "/children",
+                            params=params, headers=headers)
+    response.raise_for_status()
+    try:
+        foo = response.json()['data']
+    except:
+        return
+    pprint(response.json())
+    return response.json()['data']
+
+
+def get_media_in_galleries(token, cred):
+    '''
+    loops through airtable list of galleries
+    gets list of media in each
+    '''
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
+                                          "PhotoShelter Galleries", atbl_conf['api_key'])
+    for atbl_rec_gall in atbl_tbl.all(view="no media"):
+        gallery_id = atbl_rec_gall['fields']['gallery_id']
+        gallery_data = get_media_of_gallery(gallery_id, token, cred)
+        all_media = []
+        for media in gallery_data:
+            media_id = media['id']
+            all_media.append(media_id)
+        all_media_str = ", ".join(all_media)
+        atbl_tbl.update(atbl_rec_gall['id'], {"Media": all_media_str})
+
+
 def galleries_search(collection_id, token, cred):
     '''
     goes through the gallery list
-    ok so you need to:
-    generate a list of every collection
-    loop through every collection and get every gallery
-    loop through every gallery:
-        loop through every permission in ['includes']['data']['permissions']:
-            ensure that there's 1 permission with:
-            ['attributes']['download_image_filetype'] = 'original'
-            ['attributes']['contact_id'] = 'CT000F9iZ6WqBKPw'
-            and 1 permission with:
-            ['attributes']['download_image_filetype'] = 'original'
-            ['attrbiutes']['password'] = your_password
-        check that ['access']['data']['attributes']['native'] = 'permission'
     '''
     print("searching galleries...")
     params = {"api_key": cred['photoshelter']['api_key'],
@@ -345,6 +374,11 @@ def galleries_search(collection_id, token, cred):
                "X-PS-Auth-Token": token}
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries",
                             params=params, headers=headers)
+    response.raise_for_status()
+    try:
+        foo = response.json()['data']
+    except:
+        return
     for gallery in response.json()['data']:
         pprint(gallery)
         atbl_rec_gall = airtable.GalleryRecord().from_json(gallery)
@@ -360,7 +394,7 @@ def manage_galleries_search(token, cred):
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Collections", atbl_conf['api_key'])
-    for atbl_rec in atbl_tbl.all():
+    for atbl_rec in atbl_tbl.all(view="no galleries"):
         collection_id = atbl_rec['fields']['collection_id']
         galleries_search(collection_id, token, cred)
 
@@ -474,7 +508,8 @@ def init():
                                  'iterate_airtable',
                                  'prep_batch',
                                  'galleries_search',
-                                 'collections_search'],
+                                 'collections_search',
+                                 'get_media_in_galleries'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -527,6 +562,8 @@ def main():
             manage_galleries_search(token, cred)
         elif args.mode == "collections_search":
             collections_search(token, cred)
+        elif args.mode == "get_media_in_galleries":
+            get_media_in_galleries(token, cred)
 
 
 if __name__ == "__main__":
