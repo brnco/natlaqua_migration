@@ -447,9 +447,9 @@ def add_galleries_to_media():
                                                 "PhotoShelter Data", atbl_conf['api_key'])
     atbl_tbl_part2 = airtable.connect_one_table("appQA1IE68x2OBEGd",
                                                 "PhotoShelter Data", atbl_conf['api_key'])
-    for atbl_rec_gall in atbl_tbl_gall.all(view='has_media'):
+    for atbl_rec_gall in atbl_tbl_gall.all(view='has media'):
         media_raw = atbl_rec_gall['fields']['Media']
-        media_lst = [item.strip() for item in media.split(",")]
+        media_lst = [item.strip() for item in media_raw.split(",")]
         unfound_media = []
         for media_id in media_lst:
             atbl_rec_media = airtable.find(atbl_tbl_part1, media_id, 'media_id', True)
@@ -463,7 +463,7 @@ def add_galleries_to_media():
                     galleries_raw = atbl_rec_media['fields']['Galleries']
                     galleries_lst = [item.strip() for item in galleries_raw.split(";")]
                     galleries_lst.append(atbl_rec_gall['fields']['gallery_id'])
-                    galleries_updated = ",".join(galleries_lst)
+                    galleries_updated = ",".join(set(galleries_lst))
                     atbl_tbl_part2.update(atbl_rec_media['id'], {"Galleries": galleries_updated})
                     continue
                 except KeyError:
@@ -474,14 +474,46 @@ def add_galleries_to_media():
                 galleries_raw = atbl_rec_media['fields']['Galleries']
                 galleries_lst = [item.strip() for item in galleries_raw.split(";")]
                 galleries_lst.append(atbl_rec_gall['fields']['gallery_id'])
-                galleries_updated = ",".join(galleries_lst)
+                galleries_updated = ",".join(set(galleries_lst))
                 atbl_tbl_part1.update(atbl_rec_media['id'], {"Galleries": galleries_updated})
                 continue
             except KeyError:
                 atbl_tbl_part1.update(atbl_rec_media['id'], {"Galleries": atbl_rec_gall['fields']['gallery_id']})
                 continue
-        unfound_media = ",".join(unfound_media)
-        atbl_tbl_gall.update(atbl_rec_gall['id'], {"Media - Not In Airtable": unfound_media})
+        if unfound_media:
+            try:
+                unfound_media_rec = atbl_rec_gall['fields']['Media - Not In Airtable']
+                unfound_media_lst = unfound_media_rec.split(',')
+                unfound_media_lst.extend(unfound_media)
+                unfound_media_updated = ",".join(set(unfound_media_lst))
+                atbl_tbl_gall.update(atbl_rec_gall['id'], {"Media - Not In Airtable": unfound_media_updated})
+            except KeyError:
+                unfound_media = ",".join(set(unfound_media))
+                atbl_tbl_gall.update(atbl_rec_gall['id'], {"Media - Not In Airtable": unfound_media})
+
+
+def link_media_to_galleries():
+    '''
+    links media record to gallery records
+    '''
+    atbl_conf = airtable.config()
+    atbl_tbl_gall = airtable.connect_one_table("appQA1IE68x2OBEGd",
+                                               "PhotoShelter Galleries", atbl_conf['api_key'])
+    atbl_tbl_part1 = airtable.connect_one_table("appgYr7zoiRmDT0ye",
+                                                "PhotoShelter Data", atbl_conf['api_key'])
+    atbl_tbl_part2 = airtable.connect_one_table("appQA1IE68x2OBEGd",
+                                                "PhotoShelter Data", atbl_conf['api_key'])
+    for atbl_rec_media in atbl_tbl_part2.all(view="has galleries"):
+        galleries = atbl_rec_media['fields']['Galleries'].split(",")
+        galleries_ids = []
+        for gallery in galleries:
+            atbl_rec_gall = airtable.find(atbl_tbl_gall, gallery, "gallery_id", True)
+            if not atbl_rec_gall:
+                raise RuntimeError("How can there not be result?")
+            gallery_rec_id = atbl_rec_gall['id']
+            galleries_ids.append(gallery_rec_id)
+        atbl_tbl_part2.update(atbl_rec_media['id'], {"PhotoShelter Galleries": galleries_ids})
+        time.sleep(0.1)
 
 
 def get_session_info(token):
@@ -574,7 +606,8 @@ def init():
                                  'galleries_search',
                                  'collections_search',
                                  'get_media_in_galleries',
-                                 'add_galleries_to_media'],
+                                 'add_galleries_to_media',
+                                 'link_media_to_galleries'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -631,6 +664,8 @@ def main():
             get_media_in_galleries(token, cred)
         elif args.mode == "add_galleries_to_media":
             add_galleries_to_media()
+        elif args.mode == "link_media_to_galleries":
+            link_media_to_galleries()
 
 
 if __name__ == "__main__":
