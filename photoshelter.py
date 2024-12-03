@@ -2,6 +2,7 @@
 Photoshelter API integration for National Aquarium
 '''
 import csv
+import math
 import json
 import time
 import shutil
@@ -315,14 +316,15 @@ def prep_batch(cred):
             atbl_rec.send()
 
 
-def get_media_of_gallery(gallery_id, token, cred):
+def get_media_of_gallery(gallery_id, token, cred, page=1):
     '''
     gets the media in a single gallery
     '''
     params = {"api_key": cred['photoshelter']['api_key'],
               "Auth-Token": token,
               "password": cred['photoshelter']['password'],
-              "token": token}
+              "token": token,
+              "page": page, "per_page": 1000}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
@@ -353,15 +355,18 @@ def get_media_in_galleries(token, cred):
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
                                           "PhotoShelter Galleries", atbl_conf['api_key'])
-    for atbl_rec_gall in atbl_tbl.all(view="no media"):
+    for atbl_rec_gall in atbl_tbl.all(view="childs dont add up -- char limit"):
         gallery_id = atbl_rec_gall['fields']['gallery_id']
-        gallery_data = get_media_of_gallery(gallery_id, token, cred)
-        if not gallery_data:
-            continue
+        child_count = atbl_rec_gall['fields']['Child Count - Total']
+        total_pages = math.ceil(child_count / 1000)
+        page = 1
         all_media = []
-        for media in gallery_data:
-            media_id = media['id']
-            all_media.append(media_id)
+        while page <= total_pages:
+            gallery_data = get_media_of_gallery(gallery_id, token, cred, page)
+            for media in gallery_data:
+                media_id = media['id']
+                all_media.append(media_id)
+            page += 1
         all_media_str = ", ".join(all_media)
         atbl_tbl.update(atbl_rec_gall['id'], {"Media": all_media_str})
 
@@ -427,7 +432,56 @@ def collections_search(token, cred):
         atbl_rec_coll = airtable.CollectionRecord().from_json(coll)
         pprint(atbl_rec_coll.__dict__)
         atbl_rec_coll.send()
-        #input("yo")
+
+
+def add_galleries_to_media():
+    '''
+    iterates list of galleries
+    iterates through media in gallery
+    adds gallery to found media
+    '''
+    atbl_conf = airtable.config()
+    atbl_tbl_gall = airtable.connect_one_table("appQA1IE68x2OBEGd",
+                                               "PhotoShelter Galleries", atbl_conf['api_key'])
+    atbl_tbl_part1 = airtable.connect_one_table("appgYr7zoiRmDT0ye",
+                                                "PhotoShelter Data", atbl_conf['api_key'])
+    atbl_tbl_part2 = airtable.connect_one_table("appQA1IE68x2OBEGd",
+                                                "PhotoShelter Data", atbl_conf['api_key'])
+    for atbl_rec_gall in atbl_tbl_gall.all(view='has_media'):
+        media_raw = atbl_rec_gall['fields']['Media']
+        media_lst = [item.strip() for item in media.split(",")]
+        unfound_media = []
+        for media_id in media_lst:
+            atbl_rec_media = airtable.find(atbl_tbl_part1, media_id, 'media_id', True)
+            if not atbl_rec_media:
+                atbl_rec_media = airtable.find(atbl_tbl_part2, media_id, 'media_id', True)
+                if not atbl_rec_media:
+                    unfound_media.append(media_id)
+                    continue
+                # here means we match part2
+                try:
+                    galleries_raw = atbl_rec_media['fields']['Galleries']
+                    galleries_lst = [item.strip() for item in galleries_raw.split(";")]
+                    galleries_lst.append(atbl_rec_gall['fields']['gallery_id'])
+                    galleries_updated = ",".join(galleries_lst)
+                    atbl_tbl_part2.update(atbl_rec_media['id'], {"Galleries": galleries_updated})
+                    continue
+                except KeyError:
+                    atbl_tbl_part2.update(atbl_rec_media['id'], {"Galleries": atbl_rec_gall['fields']['gallery_id']})
+                    continue
+            # here means we match part1
+            try:
+                galleries_raw = atbl_rec_media['fields']['Galleries']
+                galleries_lst = [item.strip() for item in galleries_raw.split(";")]
+                galleries_lst.append(atbl_rec_gall['fields']['gallery_id'])
+                galleries_updated = ",".join(galleries_lst)
+                atbl_tbl_part1.update(atbl_rec_media['id'], {"Galleries": galleries_updated})
+                continue
+            except KeyError:
+                atbl_tbl_part1.update(atbl_rec_media['id'], {"Galleries": atbl_rec_gall['fields']['gallery_id']})
+                continue
+        unfound_media = ",".join(unfound_media)
+        atbl_tbl_gall.update(atbl_rec_gall['id'], {"Media - Not In Airtable": unfound_media})
 
 
 def get_session_info(token):
@@ -519,7 +573,8 @@ def init():
                                  'prep_batch',
                                  'galleries_search',
                                  'collections_search',
-                                 'get_media_in_galleries'],
+                                 'get_media_in_galleries',
+                                 'add_galleries_to_media'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -574,6 +629,8 @@ def main():
             collections_search(token, cred)
         elif args.mode == "get_media_in_galleries":
             get_media_in_galleries(token, cred)
+        elif args.mode == "add_galleries_to_media":
+            add_galleries_to_media()
 
 
 if __name__ == "__main__":
