@@ -443,11 +443,11 @@ def add_galleries_to_media():
     atbl_conf = airtable.config()
     atbl_tbl_gall = airtable.connect_one_table("appQA1IE68x2OBEGd",
                                                "PhotoShelter Galleries", atbl_conf['api_key'])
-    atbl_tbl_part1 = airtable.connect_one_table("appgYr7zoiRmDT0ye",
+    atbl_tbl_part1 = airtable.connect_one_table("appWyFi5PxBTJJZaa",
                                                 "PhotoShelter Data", atbl_conf['api_key'])
     atbl_tbl_part2 = airtable.connect_one_table("appQA1IE68x2OBEGd",
                                                 "PhotoShelter Data", atbl_conf['api_key'])
-    for atbl_rec_gall in atbl_tbl_gall.all(view='has media'):
+    for atbl_rec_gall in atbl_tbl_gall.all(view='has media - not yet linked'):
         media_raw = atbl_rec_gall['fields']['Media']
         media_lst = [item.strip() for item in media_raw.split(",")]
         unfound_media = []
@@ -482,6 +482,7 @@ def add_galleries_to_media():
                 continue
         if unfound_media:
             try:
+                print("didn't find that one")
                 unfound_media_rec = atbl_rec_gall['fields']['Media - Not In Airtable']
                 unfound_media_lst = unfound_media_rec.split(',')
                 unfound_media_lst.extend(unfound_media)
@@ -497,13 +498,14 @@ def link_media_to_galleries():
     links media record to gallery records
     '''
     atbl_conf = airtable.config()
-    atbl_tbl_gall = airtable.connect_one_table("appQA1IE68x2OBEGd",
+    # part2 - atbl_tbl_gall = airtable.connect_one_table("appQA1IE68x2OBEGd",
+    atbl_tbl_gall = airtable.connect_one_table("appgYr7zoiRmDT0ye",
                                                "PhotoShelter Galleries", atbl_conf['api_key'])
     atbl_tbl_part1 = airtable.connect_one_table("appgYr7zoiRmDT0ye",
                                                 "PhotoShelter Data", atbl_conf['api_key'])
     atbl_tbl_part2 = airtable.connect_one_table("appQA1IE68x2OBEGd",
                                                 "PhotoShelter Data", atbl_conf['api_key'])
-    for atbl_rec_media in atbl_tbl_part2.all(view="has galleries"):
+    for atbl_rec_media in atbl_tbl_part1.all(view="has galleries"):
         galleries = atbl_rec_media['fields']['Galleries'].split(",")
         galleries_ids = []
         for gallery in galleries:
@@ -512,7 +514,7 @@ def link_media_to_galleries():
                 raise RuntimeError("How can there not be result?")
             gallery_rec_id = atbl_rec_gall['id']
             galleries_ids.append(gallery_rec_id)
-        atbl_tbl_part2.update(atbl_rec_media['id'], {"PhotoShelter Galleries": galleries_ids})
+        atbl_tbl_part1.update(atbl_rec_media['id'], {"PhotoShelter Galleries": galleries_ids})
         time.sleep(0.1)
 
 

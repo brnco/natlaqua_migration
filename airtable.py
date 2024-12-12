@@ -282,7 +282,7 @@ class StillImageRecord(Model, NatlAquaAirtableRecord):
             continue
 
     class Meta:
-        # part1 base_id = "appgYr7zoiRmDT0ye"
+        # part1 base_id = "appWyFi5PxBTJJZaa"
         base_id = "appQA1IE68x2OBEGd"
         table_name = "PhotoShelter Data"
         typecast = False
