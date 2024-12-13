@@ -1,6 +1,7 @@
 '''
 Photoshelter API integration for National Aquarium
 '''
+import re
 import csv
 import math
 import json
@@ -518,6 +519,22 @@ def link_media_to_galleries():
         time.sleep(0.1)
 
 
+def rebuild_airtable_from_disk():
+    '''
+    ay yi yi
+    '''
+    path = pathlib.Path("/tub/NationalAquarium/PhotoShelter-Data_batch6")
+    for file in path.glob("*"):
+        match = re.search(r'[A-Z]0000.{11}', file.name)
+        if match:
+            media_id = match.group()
+            print(media_id)
+        else:
+            print(file.name)
+            input("yo")
+
+
+
 def get_session_info(token):
     '''
     man I am just trying to figure this out
@@ -609,7 +626,8 @@ def init():
                                  'collections_search',
                                  'get_media_in_galleries',
                                  'add_galleries_to_media',
-                                 'link_media_to_galleries'],
+                                 'link_media_to_galleries',
+                                 'rebuild_airtable_from_disk'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -668,6 +686,8 @@ def main():
             add_galleries_to_media()
         elif args.mode == "link_media_to_galleries":
             link_media_to_galleries()
+        elif args.mode == "rebuild_airtable_from_disk":
+            rebuild_airtable_from_disk()
 
 
 if __name__ == "__main__":
