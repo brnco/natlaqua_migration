@@ -20,7 +20,7 @@ def config():
     this_dirpath = pathlib.Path(__file__).parent.absolute()
     with open(this_dirpath / 'credentials.json', 'r') as config_file:
         config = json.load(config_file)
-    return config['batch9']
+    return config['batch1']
 
 
 def get_api_key():
@@ -223,8 +223,8 @@ class GalleryRecord(Model, NatlAquaAirtableRecord):
             continue
 
     class Meta:
-        base_id = "appQA1IE68x2OBEGd"
-        table_name = "PhotoShelter Galleries"
+        base_id = "app7yOX6pEDBdwT7O"
+        table_name = "Galleries"
         typecast = False
 
         @staticmethod
@@ -253,8 +253,8 @@ class CollectionRecord(Model, NatlAquaAirtableRecord):
             continue
 
     class Meta:
-        base_id = "appQA1IE68x2OBEGd"
-        table_name = "PhotoShelter Collections"
+        base_id = "app7yOX6pEDBdwT7O"
+        table_name = "Collections"
         typecast = False
 
         @staticmethod
@@ -283,8 +283,8 @@ class StillImageRecord(Model, NatlAquaAirtableRecord):
 
     class Meta:
         # part1 base_id = "appWyFi5PxBTJJZaa"
-        base_id = "appQA1IE68x2OBEGd"
-        table_name = "PhotoShelter Data"
+        base_id = "appjqbWe1U5qks6yg"
+        table_name = "Batch1"
         typecast = False
 
         @staticmethod

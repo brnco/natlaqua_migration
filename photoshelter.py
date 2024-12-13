@@ -191,7 +191,7 @@ def get_media_galleries(media_id, token, cred):
     params = {"api_key": cred['photoshelter']['api_key'],
               "password": cred['photoshelter']['password'],
               "Auth-Token": token,
-              "mode": "library",
+              "mode": "invited",
               "include": "gallery"}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key']}
@@ -200,7 +200,7 @@ def get_media_galleries(media_id, token, cred):
     '''
     response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/galleries",
                             headers=headers, params=params)
-    print(response.__dict__)
+    pprint(response.__dict__)
     input("yo")
     return response
 
@@ -250,25 +250,26 @@ def iterate_airtable(token, cred, download=False):
     '''
     print("iterating through Airtable list")
     atbl_conf = airtable.config()
-    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
-                                          "PhotoShelter Data", atbl_conf['api_key'])
+    atbl_tbl = airtable.connect_one_table("appjqbWe1U5qks6yg",
+                                          "Batch1", atbl_conf['api_key'])
     print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all(view="Everything"):
-        atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
-        print(f"working on: {atbl_rec_local.media_id}")
-        filename = pathlib.Path(atbl_rec_local.file_name_disk)
-        response = get_media_metadata_custom(atbl_rec_local.media_id, token, cred)
+    for atbl_rec_remote in atbl_tbl.all():
+        atbl_rec_updates = {}
+        media_id = atbl_rec_remote['fields']['media_id']
+        # atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
+        print(f"working on: {media_id}")
+        # filename = pathlib.Path(atbl_rec_local.file_name_disk)
+        response = get_media_metadata_custom(media_id, token, cred)
         try:
             atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
-            atbl_rec_local.permit_number = atbl_rec_with_custom_md.permit_number
+            atbl_rec_updates['Permit'] = atbl_rec_with_custom_md.permit_number
         except Exception:
             pass
-        response = get_media_galleries(atbl_rec_local.media_id, token, cred)
-        print(response.json())
+        response = get_media_galleries(media_id, token, cred)
         if response.json()['data']:
             atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
             try:
-                atbl_rec_local.galleries = atbl_rec_with_galleries.galleries
+                atbl_rec_updates['Galleries'] = atbl_rec_with_galleries.galleries
             except Exception:
                 pass
         '''
@@ -285,8 +286,9 @@ def iterate_airtable(token, cred, download=False):
                 atbl_rec_local.downloaded = "true"
             else:
                 atbl_rec_local.downloaded = "false"
-        atbl_rec_local.save()
-        time.sleep(0.1)
+        atbl_tbl.update(atbl_rec_remote['id'], atbl_rec_updates)
+        input("yo")
+        # time.sleep(0.1)
 
 
 def prep_batch(cred):
@@ -408,8 +410,8 @@ def manage_galleries_search(token, cred):
     wraps galleries_search to search for every gallery in every collection in Airtable
     '''
     atbl_conf = airtable.config()
-    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
-                                          "PhotoShelter Collections", atbl_conf['api_key'])
+    atbl_tbl = airtable.connect_one_table("app7yOX6pEDBdwT7O",
+                                          "Collections", atbl_conf['api_key'])
     for atbl_rec in atbl_tbl.all(view="no galleries"):
         collection_id = atbl_rec['fields']['collection_id']
         galleries_search(collection_id, token, cred)
