@@ -523,16 +523,21 @@ def rebuild_airtable_from_disk():
     '''
     ay yi yi
     '''
-    path = pathlib.Path("/tub/NationalAquarium/PhotoShelter-Data_batch6")
+    path = pathlib.Path("/tub/NationalAquarium/PhotoShelter-Data_batch9")
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table("app9T4BK04B1G5AAU",
+                                                 "Batch9", atbl_conf['api_key'])
+    records = []
     for file in path.glob("*"):
-        match = re.search(r'[A-Z]0000.{11}', file.name)
+        match = re.search(r'([A-Z]0000|VD000).{11}', file.name)
         if match:
             media_id = match.group()
             print(media_id)
         else:
-            print(file.name)
-            input("yo")
-
+            media_id = "None"
+        records.append({"media_id": media_id,
+                         "Filename": file.name})
+    atbl_tbl.batch_create(records)
 
 
 def get_session_info(token):
