@@ -356,9 +356,9 @@ def get_media_in_galleries(token, cred):
     gets list of media in each
     '''
     atbl_conf = airtable.config()
-    atbl_tbl = airtable.connect_one_table(atbl_conf['base_id'],
-                                          "PhotoShelter Galleries", atbl_conf['api_key'])
-    for atbl_rec_gall in atbl_tbl.all(view="childs dont add up -- char limit"):
+    atbl_tbl = airtable.connect_one_table("app7yOX6pEDBdwT7O",
+                                          "Galleries", atbl_conf['api_key'])
+    for atbl_rec_gall in atbl_tbl.all(view="has coll - has children"):
         gallery_id = atbl_rec_gall['fields']['gallery_id']
         child_count = atbl_rec_gall['fields']['Child Count - Total']
         total_pages = math.ceil(child_count / 1000)
@@ -390,9 +390,11 @@ def galleries_search(collection_id, token, cred):
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
-    response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries",
+    try:
+        response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries",
                             params=params, headers=headers)
-    response.raise_for_status()
+    except:
+        return
     try:
         foo = response.json()['data']
     except:
