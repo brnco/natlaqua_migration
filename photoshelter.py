@@ -503,23 +503,23 @@ def link_media_to_galleries():
     links media record to gallery records
     '''
     atbl_conf = airtable.config()
+    batch = "Batch8"
+    atbl_base_id = "app7ViBOzU2gAj2yu" 
     # part2 - atbl_tbl_gall = airtable.connect_one_table("appQA1IE68x2OBEGd",
-    atbl_tbl_gall = airtable.connect_one_table("appgYr7zoiRmDT0ye",
-                                               "PhotoShelter Galleries", atbl_conf['api_key'])
-    atbl_tbl_part1 = airtable.connect_one_table("appgYr7zoiRmDT0ye",
-                                                "PhotoShelter Data", atbl_conf['api_key'])
-    atbl_tbl_part2 = airtable.connect_one_table("appQA1IE68x2OBEGd",
-                                                "PhotoShelter Data", atbl_conf['api_key'])
-    for atbl_rec_media in atbl_tbl_part1.all(view="has galleries"):
-        galleries = atbl_rec_media['fields']['Galleries'].split(",")
-        galleries_ids = []
-        for gallery in galleries:
-            atbl_rec_gall = airtable.find(atbl_tbl_gall, gallery, "gallery_id", True)
-            if not atbl_rec_gall:
-                raise RuntimeError("How can there not be result?")
-            gallery_rec_id = atbl_rec_gall['id']
-            galleries_ids.append(gallery_rec_id)
-        atbl_tbl_part1.update(atbl_rec_media['id'], {"PhotoShelter Galleries": galleries_ids})
+    atbl_tbl_gall = airtable.connect_one_table(atbl_base_id,
+                                               "Galleries", atbl_conf['api_key'])
+    atbl_tbl_media = airtable.connect_one_table(atbl_base_id,
+                                                batch, atbl_conf['api_key'])
+    for atbl_rec_media in atbl_tbl_media.all():
+        media_id = atbl_rec_media['fields']['media_id']
+        results = airtable.find(atbl_tbl_gall, media_id, 'Media')
+        if not results:
+            continue
+        galleries = []
+        for atbl_rec_gall in results:
+            galleries.append(atbl_rec_gall['id'])
+        galleries = list(set(galleries))
+        atbl_tbl_media.update(atbl_rec_media['id'], {'Galleries': galleries})
         time.sleep(0.1)
 
 

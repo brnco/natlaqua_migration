@@ -347,7 +347,9 @@ def find(atbl_tbl, query, field, single_result=False):
     print(f"searching Airtable for value: {query}")
     print(f"in field: {field}")
     try:
-        results = atbl_tbl.all(formula=match({field: query}))
+        formula = f"FIND('{query}', {{Media}})"
+        results = atbl_tbl.all(formula=formula)
+        #results = atbl_tbl.all(formula=match({field: query}))
         if results:
             if single_result and len(results) > 1:
                 raise ValueError
