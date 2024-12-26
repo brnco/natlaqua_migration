@@ -110,7 +110,7 @@
         },
         "child_count": {
             "serv": ["includes", "child-count", "data", "attributes"],
-            "atbl": "Child Count"
+            "atbl": "Child Count - Raw"
         }
     }
 }

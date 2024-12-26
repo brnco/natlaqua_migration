@@ -239,56 +239,65 @@ def get_media_metadata_custom(media_id, token, cred):
               "token": token}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key']}
-    response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/custom-metadata",
-                            params=params, headers=headers)
-    return response
+    i = 0
+    while i < 10:
+        try:
+            response = requests.get("https://www.photoshelter.com/psapi/v4.0/media/" + media_id + "/custom-metadata",
+                                    params=params, headers=headers)
+            try:
+                return response.json()['data']
+            except KeyError:
+                return None
+        except requests.ConnectionError:
+            i += 1
+            time.sleep(0.1)
+            continue
 
 
 def iterate_airtable(token, cred, download=False):
     '''
     iterates through airtable list
     '''
-    print("iterating through Airtable list")
+    print("iterating through Airtable lists")
+    '''
+    batches = {"Batch1": "appjqbWe1U5qks6yg",
+               "Batch2": "appsaN570Gj510rXj",
+               "Batch3": "appDdM0GeiZGQ2Xa3",
+               "Batch4": "appfvA08UNoLP71qC",
+               "Batch5": "appa0ly6gIEsLMztS",
+               "Batch6": "appGRmNo0i67eTLPL",
+               "Batch7": "appXuHi7ju64VJcVe",
+               "Batch8": "app7ViBOzU2gAj2yu",
+               "Batch9": "app9T4BK04B1G5AAU"}
+    '''
+    batches = {"Batch8": "app7ViBOzU2gAj2yu",
+               "Batch9": "app9T4BK04B1G5AAU"}
     atbl_conf = airtable.config()
-    atbl_tbl = airtable.connect_one_table("appjqbWe1U5qks6yg",
-                                          "Batch1", atbl_conf['api_key'])
-    print("getting all records...")
-    for atbl_rec_remote in atbl_tbl.all():
-        atbl_rec_updates = {}
-        media_id = atbl_rec_remote['fields']['media_id']
-        # atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
-        print(f"working on: {media_id}")
-        # filename = pathlib.Path(atbl_rec_local.file_name_disk)
-        response = get_media_metadata_custom(media_id, token, cred)
-        try:
-            atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
-            atbl_rec_updates['Permit'] = atbl_rec_with_custom_md.permit_number
-        except Exception:
-            pass
-        response = get_media_galleries(media_id, token, cred)
-        if response.json()['data']:
-            atbl_rec_with_galleries = airtable.StillImageRecord().from_json(response.json()['data'])
+    for batch, base_id in batches.items():
+        atbl_tbl = airtable.connect_one_table(base_id,
+                                                batch, atbl_conf['api_key'])
+        print("getting all records...")
+        for atbl_rec_remote in atbl_tbl.all(view="not checked for permit"):
+            atbl_rec_updates = {"Checked for Permit": True}
+            media_id = atbl_rec_remote['fields']['media_id']
+            # atbl_rec_local = airtable.StillImageRecord().from_id(atbl_rec_remote['id'])
+            print(f"working on: {media_id}")
+            # filename = pathlib.Path(atbl_rec_local.file_name_disk)
+            response_data = get_media_metadata_custom(media_id, token, cred)
             try:
-                atbl_rec_updates['Galleries'] = atbl_rec_with_galleries.galleries
+                atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response_data)
+                atbl_rec_updates['Permit'] = atbl_rec_with_custom_md.permit_number
             except Exception:
                 pass
-        '''
-        response = get_media_md(atbl_rec_local.media_id, token, cred)
-        atbl_rec_with_custom_md = airtable.StillImageRecord().from_json(response.json()['data'])
-        try:
-            atbl_rec_local.license_expiration = atbl_rec_with_custom_md.license_expiration
-        except Exception:
-            continue
-        '''
-        if download:
-            worked_yn = download_media(atbl_rec_local.media_id, token, cred, filename=filename)
-            if worked_yn:
-                atbl_rec_local.downloaded = "true"
-            else:
-                atbl_rec_local.downloaded = "false"
-        atbl_tbl.update(atbl_rec_remote['id'], atbl_rec_updates)
-        input("yo")
-        # time.sleep(0.1)
+            if download:
+                worked_yn = download_media(atbl_rec_local.media_id, token, cred, filename=filename)
+                if worked_yn:
+                    atbl_rec_local.downloaded = "true"
+                else:
+                    atbl_rec_local.downloaded = "false"
+            atbl_tbl.update(atbl_rec_remote['id'], atbl_rec_updates)
+            #input("yo")
+            # time.sleep(0.1)
 
 
 def prep_batch(cred):
@@ -358,7 +367,7 @@ def get_media_in_galleries(token, cred):
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table("app7yOX6pEDBdwT7O",
                                           "Galleries", atbl_conf['api_key'])
-    for atbl_rec_gall in atbl_tbl.all(view="has coll - has children"):
+    for atbl_rec_gall in atbl_tbl.all(view="no media"):
         gallery_id = atbl_rec_gall['fields']['gallery_id']
         child_count = atbl_rec_gall['fields']['Child Count - Total']
         total_pages = math.ceil(child_count / 1000)
@@ -368,6 +377,7 @@ def get_media_in_galleries(token, cred):
             gallery_data = get_media_of_gallery(gallery_id, token, cred, page)
             for media in gallery_data:
                 media_id = media['id']
+                #media_id = media_id.replace("I0000", "")
                 all_media.append(media_id)
             page += 1
         all_media_str = ", ".join(all_media)
@@ -383,7 +393,7 @@ def galleries_search(collection_id, token, cred):
               "Auth-Token": token,
               "password": cred['photoshelter']['password'],
               "token": token,
-              "include": "permissions,parent,child-count",
+              "include": "child-count",
               "sort_by": "name",
               "sort_direction": "descending",
               "parent": collection_id}
@@ -393,15 +403,53 @@ def galleries_search(collection_id, token, cred):
     try:
         response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries",
                             params=params, headers=headers)
-    except:
+    except Exception as exc:
+        print(exc)
         return
     try:
         foo = response.json()['data']
     except:
+        print(response.__dict__)
         return
     for gallery in response.json()['data']:
         pprint(gallery)
         atbl_rec_gall = airtable.GalleryRecord().from_json(gallery)
+        pprint(atbl_rec_gall.__dict__)
+        input("yo")
+        atbl_rec_gall.send()
+        time.sleep(0.2)
+
+
+def get_children_of_collection(collection_id, collection_name, token, cred):
+    '''
+    gets the children of the collection
+    '''
+    print(f"getting children for {collection_id}...")
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "Auth-Token": token,
+              "password": cred['photoshelter']['password'],
+              "token": token,
+              "sort_by": "name",
+              "sort_direction": "descending"}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    try:
+        response = requests.get("https://www.photoshelter.com/psapi/v4.0/collections/" + collection_id + "/children",
+                            params=params, headers=headers)
+    except Exception as exc:
+        print(exc)
+        return
+    try:
+        foo = response.json()['data']
+    except:
+        print(response.__dict__)
+        return
+    for gallery in response.json()['data']:
+        #pprint(gallery)
+        atbl_rec_gall = airtable.GalleryRecord().from_json(gallery)
+        atbl_rec_gall.parent_collection_id = collection_id
+        atbl_rec_gall.parent_collection_name = collection_name
         pprint(atbl_rec_gall.__dict__)
         atbl_rec_gall.send()
         time.sleep(0.2)
@@ -413,10 +461,104 @@ def manage_galleries_search(token, cred):
     '''
     atbl_conf = airtable.config()
     atbl_tbl = airtable.connect_one_table("app7yOX6pEDBdwT7O",
-                                          "Collections", atbl_conf['api_key'])
-    for atbl_rec in atbl_tbl.all(view="no galleries"):
-        collection_id = atbl_rec['fields']['collection_id']
+                                          "Galleries", atbl_conf['api_key'])
+    for atbl_rec in atbl_tbl.all(view="no media"):
+        collection_id = atbl_rec['fields']['parent_collection_id']
+        #collection_name = atbl_rec['fields']['Name']
+        #get_children_of_collection(collection_id, collection_name, token, cred)
         galleries_search(collection_id, token, cred)
+
+
+def galleries_path_search(gallery_id, token, cred):
+    '''
+    does the searching for breadcrumb path of gallery
+    '''
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "Auth-Token": token,
+              "password": cred['photoshelter']['password'],
+              "token": token,
+              "gallery_id": gallery_id}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    i = 0
+    while i < 10:
+        try:
+            response = requests.get("https://www.photoshelter.com/psapi/v4.0/galleries/" + gallery_id + "/path",
+                                    params=params, headers=headers)
+            try:
+                return response.json()['data']
+            except:
+                return None
+        except requests.ConnectionError:
+            time.sleep(0.5)
+            i += 1
+            continue
+    print("maximum retries hit...")
+    raise RuntimeError("I think there's a connection problem bro")
+
+
+def manage_galleries_path_search(token, cred):
+    '''
+    adds the breadcrumb path to the gallery record
+    '''
+    print("getting breadcrumb path for galleries...")
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table("app7yOX6pEDBdwT7O",
+                                          "Galleries", atbl_conf['api_key'])
+    for atbl_rec in atbl_tbl.all(view="no path"):
+        gallery_id = atbl_rec['fields']['gallery_id']
+        print(gallery_id)
+        response_data = galleries_path_search(gallery_id, token, cred)
+        try:
+            path_names = [gall['attributes']['name'] for gall in reversed(response_data)]
+            breadcrumb_names = " > ".join(path_names)
+            path_ids = [coll['id'] for coll in reversed(response_data)]
+            breadcrumb_ids = ",".join(path_ids)
+            atbl_tbl.update(atbl_rec['id'], {"Parents - Names": breadcrumb_names,
+                                            "Parents - IDs": breadcrumb_ids})
+        except:
+            continue
+
+
+def collections_path_search(collection_id, token, cred):
+    '''
+    does the searching for breadcrumb path of collection
+    '''
+    params = {"api_key": cred['photoshelter']['api_key'],
+              "Auth-Token": token,
+              "password": cred['photoshelter']['password'],
+              "token": token,
+              "collection_id": collection_id}
+    headers = {"content-type": "application/x-www-form-urlencoded",
+               "X-PS-Api-Key": cred['photoshelter']['api_key'],
+               "X-PS-Auth-Token": token}
+    response = requests.get("https://www.photoshelter.com/psapi/v4.0/collections/" + collection_id + "/path",
+                            params=params, headers=headers)
+    try:
+        return response.json()['data']
+    except:
+        return None
+
+
+def manage_collections_path_search(token, cred):
+    '''
+    adds the breadcrumb path to the collection record
+    '''
+    print("getting breadcrumb path for collections...")
+    atbl_conf = airtable.config()
+    atbl_tbl = airtable.connect_one_table("app7yOX6pEDBdwT7O",
+                                          "Collections", atbl_conf['api_key'])
+    for atbl_rec in atbl_tbl.all(view="no path"):
+        collection_id = atbl_rec['fields']['collection_id']
+        print(collection_id)
+        response_data = collections_path_search(collection_id, token, cred)
+        path_names = [coll['attributes']['name'] for coll in reversed(response_data)]
+        breadcrumb_names = " > ".join(path_names)
+        path_ids = [coll['id'] for coll in reversed(response_data)]
+        breadcrumb_ids = ",".join(path_ids)
+        atbl_tbl.update(atbl_rec['id'], {"Parents - Names": breadcrumb_names,
+                                         "Parents - IDs": breadcrumb_ids})
 
 
 def collections_search(token, cred):
@@ -426,7 +568,8 @@ def collections_search(token, cred):
     print("searching collections...")
     params = {"include": "permissions,parent",
               "sort_by": "name",
-              "sort_direction": "descending"}
+              "sort_direction": "descending",
+              "page": 2, "per_page": 500}
     headers = {"content-type": "application/x-www-form-urlencoded",
                "X-PS-Api-Key": cred['photoshelter']['api_key'],
                "X-PS-Auth-Token": token}
@@ -498,29 +641,72 @@ def add_galleries_to_media():
                 atbl_tbl_gall.update(atbl_rec_gall['id'], {"Media - Not In Airtable": unfound_media})
 
 
+def link_straggler_galleries():
+    '''
+    links two straggler galleries to media
+    '''
+    batches = {"Batch1": "appjqbWe1U5qks6yg",
+               "Batch2": "appsaN570Gj510rXj",
+               "Batch3": "appDdM0GeiZGQ2Xa3",
+               "Batch4": "appfvA08UNoLP71qC",
+               "Batch5": "appa0ly6gIEsLMztS",
+               "Batch6": "appGRmNo0i67eTLPL",
+               "Batch7": "appXuHi7ju64VJcVe",
+               "Batch8": "app7ViBOzU2gAj2yu",
+              "Batch9": "app9T4BK04B1G5AAU"}
+    atbl_conf = airtable.config()
+    for batch, base_id in batches.items():
+        atbl_tbl_gall = airtable.connect_one_table(base_id,
+                                                   "Galleries", atbl_conf['api_key'])
+        atbl_tbl_media = airtable.connect_one_table(base_id,
+                                                    batch, atbl_conf['api_key'])
+        straggler_galleries = ["G0000NS7rS6NnAcQ", "G0000AcKmu4eXInQ"]
+        for gall_id in straggler_galleries:
+            atbl_rec_gall = airtable.find(atbl_tbl_gall, gall_id, "gallery_id", True)
+            media = atbl_rec_gall['fields']['Media']
+            media_ids = ["I0000" + media_id for media_id in media.split(", ")]
+            found_media = []
+            for media_id in media_ids:
+                print(f"searching {batch}")
+                atbl_rec_media = airtable.find(atbl_tbl_media, media_id, "media_id", True)
+                if not atbl_rec_media:
+                    time.sleep(0.2)
+                    continue
+                found_media.append(atbl_rec_media['id'])
+            atbl_tbl_gall.update(atbl_rec_gall['id'], found_media)
+
+
 def link_media_to_galleries():
     '''
     links media record to gallery records
     '''
+    batches = {"Batch1": "appjqbWe1U5qks6yg",
+               "Batch2": "appsaN570Gj510rXj",
+               "Batch3": "appDdM0GeiZGQ2Xa3",
+               "Batch4": "appfvA08UNoLP71qC",
+               "Batch5": "appa0ly6gIEsLMztS",
+               "Batch6": "appGRmNo0i67eTLPL",
+               "Batch7": "appXuHi7ju64VJcVe",
+               "Batch8": "app7ViBOzU2gAj2yu",
+               "Batch9": "app9T4BK04B1G5AAU"}
     atbl_conf = airtable.config()
-    batch = "Batch8"
-    atbl_base_id = "app7ViBOzU2gAj2yu" 
-    # part2 - atbl_tbl_gall = airtable.connect_one_table("appQA1IE68x2OBEGd",
-    atbl_tbl_gall = airtable.connect_one_table(atbl_base_id,
-                                               "Galleries", atbl_conf['api_key'])
-    atbl_tbl_media = airtable.connect_one_table(atbl_base_id,
-                                                batch, atbl_conf['api_key'])
-    for atbl_rec_media in atbl_tbl_media.all():
-        media_id = atbl_rec_media['fields']['media_id']
-        results = airtable.find(atbl_tbl_gall, media_id, 'Media')
-        if not results:
-            continue
-        galleries = []
-        for atbl_rec_gall in results:
-            galleries.append(atbl_rec_gall['id'])
-        galleries = list(set(galleries))
-        atbl_tbl_media.update(atbl_rec_media['id'], {'Galleries': galleries})
-        time.sleep(0.1)
+    for batch, base_id in batches.items():
+        atbl_tbl_gall = airtable.connect_one_table(base_id,
+                                                   "Galleries", atbl_conf['api_key'])
+        atbl_tbl_media = airtable.connect_one_table(base_id,
+                                                    batch, atbl_conf['api_key'])
+        for atbl_rec_media in atbl_tbl_media.all():
+            media_id = atbl_rec_media['fields']['media_id']
+            media_id_search = media_id.replace("I0000", "")
+            results = airtable.find(atbl_tbl_gall, media_id, 'Media')
+            if not results:
+                continue
+            galleries = []
+            for atbl_rec_gall in results:
+                galleries.append(atbl_rec_gall['id'])
+            galleries = list(set(galleries))
+            atbl_tbl_media.update(atbl_rec_media['id'], {'Galleries': galleries})
+            time.sleep(0.1)
 
 
 def rebuild_airtable_from_disk():
@@ -636,7 +822,10 @@ def init():
                                  'get_media_in_galleries',
                                  'add_galleries_to_media',
                                  'link_media_to_galleries',
-                                 'rebuild_airtable_from_disk'],
+                                 "link_straggler_galleries",
+                                 'rebuild_airtable_from_disk',
+                                 'add_path_to_collections',
+                                 'add_path_to_galleries'],
                         help="the mode of the script")
     parser.add_argument("--token", dest="token", default=None,
                         help="the token for this session, "\
@@ -687,14 +876,20 @@ def main():
             download_media("I0000IcZL.qvRYv8", token, cred)
         elif args.mode == "galleries_search":
             manage_galleries_search(token, cred)
+        elif args.mode == "add_path_to_galleries":
+            manage_galleries_path_search(token, cred)
         elif args.mode == "collections_search":
             collections_search(token, cred)
+        elif args.mode == "add_path_to_collections":
+            manage_collections_path_search(token, cred)
         elif args.mode == "get_media_in_galleries":
             get_media_in_galleries(token, cred)
         elif args.mode == "add_galleries_to_media":
             add_galleries_to_media()
         elif args.mode == "link_media_to_galleries":
             link_media_to_galleries()
+        elif args.mode == "link_straggler_galleries":
+            link_straggler_galleries()
         elif args.mode == "rebuild_airtable_from_disk":
             rebuild_airtable_from_disk()
 
