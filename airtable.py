@@ -349,7 +349,10 @@ def find(atbl_tbl, query, field, single_result=False):
     try:
         #formula = f"FIND('{query}', {{Media}})"
         formula = f"FIND('{query}', {field})"
-        results = atbl_tbl.all(formula=formula)
+        try:
+            results = atbl_tbl.all(formula=formula)
+        except requests.exceptions.HTTPError:
+            results = None
         #results = atbl_tbl.all(formula=match({field: query}))
         if results:
             if single_result and len(results) > 1:
