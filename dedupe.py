@@ -1,5 +1,17 @@
 '''
 dedupes the csvs of the collection
+
+need to loop through dedupe view in batch5
+match media_ids in batch7
+-if match, check 'delete' box in batch7
+-if not match, ???
+
+then you need to delete those files in batch 7
+then re-zip, re-upload
+
+then re-zip batch9 and re-upload
+
+then you're done
 '''
 
 import os
