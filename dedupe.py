@@ -17,6 +17,7 @@ then you're done
 import os
 import csv
 import pathlib
+import argparse
 
 def process_csv_files(folder_path, output_file):
     '''
@@ -50,8 +51,53 @@ def process_csv_files(folder_path, output_file):
     except Exception as e:
         print(f"Error writing to {output_file}: {e}")
 
-folder_path = pathlib.Path("/home/bcoates/code/natlaqua_migration/dedupe/")
 
-output_file = "duplicate_media_ids.csv"
+def delete_duplicate_files():
+    '''
+    loops through list of duplicate files
+    deletes them
+    updates Airtable
+    
+    batches with dupes:
+    batch 1?
+    batch4
+    batch5
+    batch7
+    batch9
 
-process_csv_files(folder_path, output_file)
+    need to decide which files to delete
+    find and mark them in Airtable
+    create those views
+    then write all this
+    '''
+
+
+
+
+def init_args():
+    '''
+    initialize arguments form the CLI
+    '''
+    parser = argparse.ArgumentParser(
+            formatter_class=argparse.RawTextHelpFormatter)
+    parser.add_argument("--mode", dest="mode",
+                        choices=['find_duplicates',
+                                 'delete_duplicate_files'])
+    args = parser.parse_args()
+    return args
+
+
+def main():
+    '''
+    do the thing
+    '''
+    args = init_args()
+    if args.mode == 'find_duplicates':
+        folder_path = pathlib.Path("/home/bcoates/code/natlaqua_migration/dedupe/")
+        output_file = "duplicate_media_ids.csv"
+        process_csv_files(folder_path, output_file)
+    elif args.mode == 'delete_duplicate_files':
+        delete_duplicate_files()
+
+if __name__ == "__main__":
+    main()
